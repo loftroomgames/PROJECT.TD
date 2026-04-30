@@ -1,1 +1,2 @@
-# PROJECT.TransmisiaDatelor
+# PROJECT.TransmisiaDatelor - Siket Jozsef Attila
+

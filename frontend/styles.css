@@ -1,0 +1,178 @@
+:root {
+    --win-grey: #c0c0c0;
+    --win-blue: #000080;
+    --win-white: #ffffff;
+    --win-shadow: #808080;
+    --desktop-teal: #008080;
+}
+
+
+body {
+    background-color: var(--desktop-teal);
+    margin: 0;
+    font-family: "Cascadia Code", Arial, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+}
+
+
+.taskbar-top {
+    background-color: var(--win-blue);
+    height: 30px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    color: white;
+    border-bottom: 2px solid var(--win-shadow);
+}
+
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+}
+
+
+.system-title {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+
+.system-tray {
+    background-color: var(--win-grey);
+    color: black;
+    padding: 2px 16px;
+    border-left: 2px solid var(--win-shadow);
+    border-top: 2px solid var(--win-shadow);
+    border-right: 2px solid var(--win-white);
+    border-bottom: 2px solid var(--win-white);
+    font-size: 13px;
+}
+
+
+.window {
+    width: 800px;
+    height: 400px;
+    background-color: var(--win-grey);
+
+    border-left: 4px solid var(--win-white);
+    border-top: 4px solid var(--win-white);
+    border-right: 4px solid var(--win-shadow);
+    border-bottom: 4px solid var(--win-shadow);
+    
+    margin: 100px auto;
+    padding: 2px;
+    display: flex;
+    flex-direction: column;
+}
+
+
+.window-title {
+    background: var(--win-blue);
+    color: white;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 16px;
+}
+
+
+.window-body {
+    padding: 20px;
+    color: black;
+    display: flex;
+    flex-direction: column; 
+    box-sizing: border-box;
+}
+
+
+.buttons-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+
+.control-button {
+    padding: 8px 16px;
+    width: 256px;
+    cursor: pointer;
+    background-color: #808080;
+    color: white;
+    border: 1px solid white;
+    transition: background 0.3s;
+}
+
+
+.control-btn:hover {
+    background-color: #3498db;
+}
+
+
+.welcome-message {
+    text-align: center;
+}
+
+
+.status-bar {
+    display: flex;
+    background: var(--win-grey);
+    border-top: 2px solid var(--win-shadow);
+    padding: 2px;
+    gap: 2px;
+    margin-top: auto;
+}
+
+
+.status-field {
+    border-left: 2px solid var(--win-shadow);
+    border-top: 2px solid var(--win-shadow);
+    border-right: 2px solid var(--win-white);
+    border-bottom: 2px solid var(--win-white);
+    padding: 2px 10px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+/* Indicatoarele pt. status conexiune */
+.indicator-red { width: 10px; height: 10px; background: #ff0000; box-shadow: inset 2px 2px 2px black; }
+.indicator-green { width: 10px; height: 10px; background: #00ff00; box-shadow: inset 2px 2px 2px black; }
+
+
+/* Butoanele DISABLED */
+.control-button:disabled {
+    color: var(--win-shadow);
+    cursor: not-allowed;
+    border: 1px solid var(--win-shadow);
+    background-color: var(--win-grey);
+}
+
+
+.camera-placeholder {
+    width: 100%;
+    height: 240px;
+    background: black;
+    color: #00ff00;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px inset var(--win-white);
+}
+
+
+.win-input {
+    border: 2px inset var(--win-white);
+    padding: 4px;
+    margin-bottom: 10px;
+    background: white;
+}

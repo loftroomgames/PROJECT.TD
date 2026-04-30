@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TD.CameraControl</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="scripts.js"></script>
+</head>
+
+<body>
+
+    <div class="taskbar-top">
+        <div class="header-content">
+            <span class="system-title">🎦 PROJECT.TD</span>
+            <div id="clock" class="system-tray">00:00:00</div>
+        </div>
+    </div>
+
+    <div class="desktop">
+
+        <div id="welcome-window" class="window">
+
+            <div class="window-title">
+                <span>Camera Control [v1.0]</span>
+            </div>
+
+            <div class="window-body">
+                <div class="welcome-message">
+                    <p>Bun venit în Centrul de Control!</p>
+                </div>
+                
+                <div class="buttons-container">
+                    <button class="control-button" onclick="openWindow('camera-window')">Guest</button>
+                    <button class="control-button" onclick="openWindow('login-window')">Login</button>
+                </div>
+            </div>
+
+
+            <div class="status-bar">
+                <div class="status-field" id="esp-status">
+                    Status ESP: <span id="status-text">DECONECTAT</span>
+                    <div id="connection-led" class="indicator-red"></div>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="camera-window" class="window" style="display: none;">
+            <div class="window-title">
+                <span>Control Panel [Guest]</span>
+                <button class="win-btn" onclick="closeWindow('camera-window')">X</button>
+            </div>
+            <div class="window-body">
+                <div class="camera-placeholder">
+                    <p>lipsă semnal ...</p>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="login-window" class="window" style="display: none;">
+            <div class="window-title">
+                <span>System Login</span>
+                <button class="win-btn" onclick="closeWindow('login-window')">X</button>
+            </div>
+            <div class="window-body login-form">
+                <label>E-mail:</label>
+                <input type="text" class="win-input">
+                <label>Parolă:</label>
+                <input type="password" class="win-input">
+                <div class="form-buttons">
+                    <button class="control-button small">Login</button>
+                    <button class="control-button small">Register</button>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</body>
+</html>

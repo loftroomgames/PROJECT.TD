@@ -47,19 +47,27 @@ function closeWindow(id)
 
 
 
-async function checkCameraStatus()
-{
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateClock();
+    setInterval(updateClock, 1000);
+    checkCameraStatus();
+});
+
+async function checkCameraStatus() {
     try {
         const response = await fetch('/api/status');
+        if (!response.ok) throw new Error("Server negăsit");
+        
         const data = await response.json();
+        console.log("Date primite de la server:", data);
+        
         setConnection(data.isConnected);
     } catch (error) {
-        console.error("Eroare la conectarea cu serverul:", error);
+        console.error("Eroare la Fetch:", error);
         setConnection(false);
     }
 }
-
-
 
 updateClock();
 checkCameraStatus();

@@ -12,7 +12,7 @@ app.use(express.json({ limit: '2mb' }));
 let cameraStatus = {
     isConnected: true,
     lastImage: "",
-    angle: 90
+    angle: 0
 };
 
 

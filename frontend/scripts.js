@@ -47,6 +47,20 @@ function closeWindow(id)
 
 
 
+async function checkCameraStatus()
+{
+    try {
+        const response = await fetch('/api/status');
+        const data = await response.json();
+        setConnection(data.isConnected);
+    } catch (error) {
+        console.error("Eroare la conectarea cu serverul:", error);
+        setConnection(false);
+    }
+}
 
-setInterval(updateClock, 1000);
+
+
 updateClock();
+checkCameraStatus();
+setInterval(updateClock, 1000);

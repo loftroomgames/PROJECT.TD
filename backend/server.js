@@ -16,14 +16,20 @@ let cameraStatus = {
 };
 
 
-// calea catre pagina web
-app.use(express.static(path.join(__dirname, '../frontend')));
-
-
 
 app.get('/api/status', (req, res) => {
     res.json(cameraStatus);
 });
+
+
+// calea catre pagina web
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+
+app.use((req, res) => {
+    res.sendFile(path.join(process.cwd(), '../frontend/index.html'));
+});
+
 
 app.post('/api/upload', (req, res) => {
     const { image } = req.body;
@@ -31,11 +37,6 @@ app.post('/api/upload', (req, res) => {
     res.json({ success: true, target_angle: cameraStatus.angle });
 });
 
-
-// trimite pagina principală către toți
-app.get('/:any*', (req, res) => {
-    res.sendFile(path.join(process.cwd(), '../frontend/index.html'));
-});
 
 
 const PORT = process.env.PORT || 3000;

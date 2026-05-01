@@ -33,8 +33,8 @@ app.post('/api/upload', (req, res) => {
 
 
 // trimite pagina principală către toți
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+app.get('(.*)', (req, res) => {
+    res.sendFile(path.join(process.cwd(), '../frontend/index.html'));
 });
 
 

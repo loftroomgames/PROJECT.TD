@@ -14,7 +14,8 @@ let systemState = {
     servoAngle: 90,
     activeUser: null, // Email-ul celui care controlează acum
     queue: [],        // Lista de email-uri care așteaptă
-    timeLeft: 0
+    timeLeft: 0,
+    lastCheckIn: 0
 };
 
 // Încărcare utilizatori din JSON
@@ -72,9 +73,17 @@ app.post('/api/request-control', (req, res) => {
     res.json({ success: true });
 });
 
+
 app.get('/api/status', (req, res) => {
-    res.json(systemState);
+    // Dacă ultima verificare a fost acum mai puțin de 6 secunde, e online
+    const isOnline = (Date.now() - systemState.lastCheckIn) < 6000;
+    
+    res.json({
+        ...systemState,
+        isConnected: isOnline // Trimitem "true" sau "false" către Frontend
+    });
 });
+
 
 app.post('/api/command', (req, res) => {
     const { email, angle } = req.body;
@@ -85,8 +94,10 @@ app.post('/api/command', (req, res) => {
     res.status(403).json({ error: "Nu ai controlul acum" });
 });
 
+
 // Rută specială pentru ESP32 (doar citește unghiul)
 app.get('/api/esp/angle', (req, res) => {
+    systemState.lastCheckIn = Date.now();
     res.json({ angle: systemState.servoAngle });
 });
 

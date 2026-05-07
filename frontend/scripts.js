@@ -13,21 +13,24 @@ function updateClock()
 }
 
 
-function setConnection(status)
-{
+function setConnection(status) {
     isConnected = status;
     const led = document.getElementById('connection-led');
     const text = document.getElementById('status-text');
-    const buttons = document.querySelectorAll('.control-button');
+    
+
+    const guestButton = document.querySelector('button[onclick*="camera-window"]');
+    const requestButton = document.getElementById('btn-request');
 
     if(status) {
         led.className = 'indicator-green';
         text.innerText = 'CONECTAT';
-        buttons.forEach(b => b.disabled = false);
+        if(guestButton) guestButton.disabled = false;
     } else {
         led.className = 'indicator-red';
         text.innerText = 'DECONECTAT';
-        buttons.forEach(b => b.disabled = true);
+        // Opțional: poți lăsa Guest activ să vadă coada, dar blocăm controlul
+        // if(guestButton) guestButton.disabled = true; 
     }
 }
 

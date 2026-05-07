@@ -47,33 +47,36 @@
         </div>
 
 
-        <div id="camera-window" class="window" style="display: none;">
+        <div id="login-window" class="window" style="display: none;">
             <div class="window-title">
-                <span>Control Panel [Guest]</span>
-                <button class="win-btn" onclick="closeWindow('camera-window')">X</button>
+                <span>System Auth</span>
+                <button class="win-btn" onclick="closeWindow('login-window')">X</button>
             </div>
             <div class="window-body">
-                <div class="camera-placeholder">
-                    <p>lipsă semnal ...</p>
+                <input type="email" id="auth-email" placeholder="Email" class="win-input">
+                <input type="password" id="auth-pass" placeholder="Parola" class="win-input">
+                <div class="form-buttons">
+                    <button onclick="handleAuth('login')" class="control-button small">Login</button>
+                    <button onclick="handleAuth('register')" class="control-button small">Register</button>
                 </div>
             </div>
         </div>
 
-
-        <div id="login-window" class="window" style="display: none;">
+        
+        <div id="camera-window" class="window" style="display: none;">
             <div class="window-title">
-                <span>System Login</span>
-                <button class="win-btn" onclick="closeWindow('login-window')">X</button>
+                <span>Control Panel</span>
+                <button class="win-btn" onclick="closeWindow('camera-window')">X</button>
             </div>
-            <div class="window-body login-form">
-                <label>E-mail:</label>
-                <input type="text" class="win-input">
-                <label>Parolă:</label>
-                <input type="password" class="win-input">
-                <div class="form-buttons">
-                    <button class="control-button small">Login</button>
-                    <button class="control-button small">Register</button>
+            <div class="window-body">
+                <div id="queue-info">Status: Se încarcă...</div>
+                <div id="control-area" style="display: none; text-align: center; margin-top: 20px;">
+                    <h3>CONTROL SERVO</h3>
+                    <input type="range" id="servo-slider" min="0" max="180" value="90" oninput="sendServoCommand(this.value)">
+                    <p>Unghi: <span id="angle-val">90</span>°</p>
+                    <div id="timer-display" style="font-weight: bold; color: red;"></div>
                 </div>
+                <button id="btn-request" onclick="requestControl()" class="control-button">Cere Control (30s)</button>
             </div>
         </div>
 

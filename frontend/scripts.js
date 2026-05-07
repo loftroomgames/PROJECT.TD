@@ -1,4 +1,5 @@
 let isConnected = false;
+let currentUser = localStorage.getItem('userEmail');
 
 
 function updateClock()
@@ -47,12 +48,12 @@ function closeWindow(id)
 
 
 
-
 document.addEventListener('DOMContentLoaded', () => {
     updateClock();
     setInterval(updateClock, 1000);
     checkCameraStatus();
 });
+
 
 async function checkCameraStatus() {
     try {
@@ -69,6 +70,73 @@ async function checkCameraStatus() {
     }
 }
 
+
+async function handleAuth(type) {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-pass').value;
+    const res = await fetch(`/api/${type}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if(data.success) {
+        if(type === 'login') {
+            localStorage.setItem('userEmail', email);
+            currentUser = email;
+            alert("Logat cu succes!");
+            closeWindow('login-window');
+        } else alert("Înregistrat!");
+    } else alert(data.error);
+}
+
+
+async function requestControl() {
+    if(!currentUser) return alert("Trebuie să te loghezi!");
+    await fetch('/api/request-control', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email: currentUser })
+    });
+}
+
+
+async function sendServoCommand(val) {
+    document.getElementById('angle-val').innerText = val;
+    await fetch('/api/command', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email: currentUser, angle: parseInt(val) })
+    });
+}
+
+
+async function updateStatus() {
+    const res = await fetch('/api/status');
+    const state = await res.json();
+    
+    const info = document.getElementById('queue-info');
+    const controlArea = document.getElementById('control-area');
+    const btnRequest = document.getElementById('btn-request');
+
+    if (state.activeUser === currentUser) {
+        info.innerText = "EȘTI LA CONTROL!";
+        controlArea.style.display = 'block';
+        btnRequest.style.display = 'none';
+        document.getElementById('timer-display').innerText = `Timp rămas: ${state.timeLeft}s`;
+    } else {
+        controlArea.style.display = 'none';
+        btnRequest.style.display = 'block';
+        if(state.activeUser) {
+            info.innerText = `La control: ${state.activeUser}. În coadă: ${state.queue.length}`;
+        } else {
+            info.innerText = "Sistem liber. Cere controlul!";
+        }
+    }
+}
+
+
 updateClock();
 checkCameraStatus();
+setInterval(updateStatus, 1000);
 setInterval(updateClock, 1000);

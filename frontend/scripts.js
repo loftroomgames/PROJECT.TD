@@ -14,24 +14,24 @@ function updateClock()
 }
 
 
-function setConnection(status) {
+function setConnection(status)
+{
     isConnected = status;
     const led = document.getElementById('connection-led');
     const text = document.getElementById('status-text');
     
 
-    const guestButton = document.querySelector('button[onclick*="camera-window"]');
+    const controlButton = document.querySelector('button[onclick*="camera-window"]');
     const requestButton = document.getElementById('btn-request');
 
     if(status) {
         led.className = 'indicator-green';
         text.innerText = 'CONECTAT';
-        if(guestButton) guestButton.disabled = false;
+        if(controlButton) controlButton.disabled = false;
     } else {
         led.className = 'indicator-red';
         text.innerText = 'DECONECTAT';
-        // Opțional: poți lăsa Guest activ să vadă coada, dar blocăm controlul
-        // if(guestButton) guestButton.disabled = true; 
+        if(controlButton) controlButton.disabled = true; 
     }
 }
 
@@ -75,20 +75,23 @@ async function checkCameraStatus() {
 }
 
 
-async function handleAuth(type) {
-    const email = document.getElementById('auth-email').value;
+async function handleAuth(type)
+{
+    const username = document.getElementById('auth-user').value;
     const password = document.getElementById('auth-pass').value;
+
     const res = await fetch(`/api/${type}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ email, password })
     });
+
     const data = await res.json();
     if(data.success) {
         if(type === 'login') {
-            localStorage.setItem('userEmail', email);
-            currentUser = email;
-            updateAuthUI(); // <--- Adăugat
+            localStorage.setItem('userUsername', username);
+            currentUser = username;
+            updateAuthUI();
             alert("Logat cu succes!");
             closeWindow('login-window');
         } else alert("Înregistrat!");
@@ -96,27 +99,30 @@ async function handleAuth(type) {
 }
 
 
-async function requestControl() {
+async function requestControl()
+{
     if(!currentUser) return alert("Trebuie să te loghezi!");
     await fetch('/api/request-control', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ email: currentUser })
+        body: JSON.stringify({ username: currentUser })
     });
 }
 
 
-async function sendServoCommand(val) {
+async function sendServoCommand(val)
+{
     document.getElementById('angle-val').innerText = val;
     await fetch('/api/command', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ email: currentUser, angle: parseInt(val) })
+        body: JSON.stringify({ uername: currentUser, angle: parseInt(val) })
     });
 }
 
 
-async function updateStatus() {
+async function updateStatus()
+{
     const res = await fetch('/api/status');
     const state = await res.json();
     
@@ -136,7 +142,7 @@ async function updateStatus() {
     }
 
     if (state.activeUser === currentUser) {
-        wasActive = true; // Suntem la control
+        wasActive = true;
         info.innerText = "EȘTI LA CONTROL!";
         controlArea.style.display = 'block';
         btnRequest.style.display = 'none';
@@ -154,8 +160,9 @@ async function updateStatus() {
 }
 
 
-// Funcție pentru a actualiza interfața în funcție de login
-function updateAuthUI() {
+
+function updateAuthUI()
+{
     const authStatus = document.getElementById('auth-status');
     const controlBtn = document.getElementById('main-control-btn');
     
@@ -164,8 +171,8 @@ function updateAuthUI() {
         authStatus.style.color = "#00ff00"; // Verde pentru logat
         controlBtn.disabled = false;
     } else {
-        authStatus.innerText = "Oaspete (Logare necesară)";
-        authStatus.style.color = "white";
+        authStatus.innerText = "Logare necesară";
+        authStatus.style.color = "red";
         controlBtn.disabled = true;
     }
 }

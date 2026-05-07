@@ -42,14 +42,20 @@ body {
 
 
 .system-tray {
+    display: flex;
+    align-items: center;
     background-color: var(--win-grey);
     color: black;
-    padding: 2px 16px;
+    padding: 2px 10px;
     border-left: 2px solid var(--win-shadow);
     border-top: 2px solid var(--win-shadow);
     border-right: 2px solid var(--win-white);
     border-bottom: 2px solid var(--win-white);
-    font-size: 13px;
+    font-size: 12px;
+}
+
+#auth-status {
+    font-weight: bold;
 }
 
 

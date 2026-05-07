@@ -14,6 +14,7 @@
     <div class="taskbar-top">
         <div class="header-content">
             <span class="system-title">🎦 PROJECT.TD</span>
+            <span id="auth-status" style="margin-right: 10px; border-right: 1px solid #808080; padding-right: 10px;">Oaspete</span>
             <div id="clock" class="system-tray">00:00:00</div>
         </div>
     </div>
@@ -32,7 +33,7 @@
                 </div>
                 
                 <div class="buttons-container">
-                    <button class="control-button" onclick="openWindow('camera-window')">Guest</button>
+                    <button class="control-button" onclick="openWindow('camera-window')">Control</button>
                     <button class="control-button" onclick="openWindow('login-window')">Login</button>
                 </div>
             </div>
@@ -53,7 +54,7 @@
                 <button class="win-btn" onclick="closeWindow('login-window')">X</button>
             </div>
             <div class="window-body">
-                <input type="email" id="auth-email" placeholder="Email" class="win-input">
+                <input type="email" id="auth-email" placeholder="Nume Utilizator" class="win-input">
                 <input type="password" id="auth-pass" placeholder="Parola" class="win-input">
                 <div class="form-buttons">
                     <button onclick="handleAuth('login')" class="control-button small">Login</button>
@@ -62,7 +63,7 @@
             </div>
         </div>
 
-        
+
         <div id="camera-window" class="window" style="display: none;">
             <div class="window-title">
                 <span>Control Panel</span>

@@ -1,5 +1,6 @@
 let isConnected = false;
 let currentUser = localStorage.getItem('userEmail');
+let wasActive = false;
 
 
 function updateClock()
@@ -53,8 +54,8 @@ function closeWindow(id)
 
 document.addEventListener('DOMContentLoaded', () => {
     updateClock();
+    updateAuthUI(); // <--- Verificăm starea la pornire
     setInterval(updateClock, 1000);
-    checkCameraStatus();
 });
 
 
@@ -87,6 +88,7 @@ async function handleAuth(type) {
         if(type === 'login') {
             localStorage.setItem('userEmail', email);
             currentUser = email;
+            updateAuthUI(); // <--- Adăugat
             alert("Logat cu succes!");
             closeWindow('login-window');
         } else alert("Înregistrat!");
@@ -118,16 +120,29 @@ async function updateStatus() {
     const res = await fetch('/api/status');
     const state = await res.json();
     
+    setConnection(state.isConnected);
+
     const info = document.getElementById('queue-info');
     const controlArea = document.getElementById('control-area');
     const btnRequest = document.getElementById('btn-request');
 
+    // LOGICA DE EXPULZARE
+    // Dacă am fost activ și acum nu mai sunt (timpul a expirat)
+    if (wasActive && state.activeUser !== currentUser) {
+        alert("Timpul tău a expirat!");
+        closeWindow('camera-window');
+        wasActive = false;
+        return;
+    }
+
     if (state.activeUser === currentUser) {
+        wasActive = true; // Suntem la control
         info.innerText = "EȘTI LA CONTROL!";
         controlArea.style.display = 'block';
         btnRequest.style.display = 'none';
         document.getElementById('timer-display').innerText = `Timp rămas: ${state.timeLeft}s`;
     } else {
+        wasActive = false;
         controlArea.style.display = 'none';
         btnRequest.style.display = 'block';
         if(state.activeUser) {
@@ -135,6 +150,23 @@ async function updateStatus() {
         } else {
             info.innerText = "Sistem liber. Cere controlul!";
         }
+    }
+}
+
+
+// Funcție pentru a actualiza interfața în funcție de login
+function updateAuthUI() {
+    const authStatus = document.getElementById('auth-status');
+    const controlBtn = document.getElementById('main-control-btn');
+    
+    if (currentUser) {
+        authStatus.innerText = `Utilizator: ${currentUser}`;
+        authStatus.style.color = "#00ff00"; // Verde pentru logat
+        controlBtn.disabled = false;
+    } else {
+        authStatus.innerText = "Oaspete (Logare necesară)";
+        authStatus.style.color = "white";
+        controlBtn.disabled = true;
     }
 }
 

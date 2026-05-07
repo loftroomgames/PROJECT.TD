@@ -19,15 +19,14 @@ function setConnection(status)
     isConnected = status;
     const led = document.getElementById('connection-led');
     const text = document.getElementById('status-text');
-    
-
     const controlButton = document.querySelector('button[onclick*="camera-window"]');
-    const requestButton = document.getElementById('btn-request');
 
     if(status) {
         led.className = 'indicator-green';
         text.innerText = 'CONECTAT';
-        if(controlButton) controlButton.disabled = false;
+        if(controlButton) {
+            controlButton.disabled = !currentUser; 
+        }
     } else {
         led.className = 'indicator-red';
         text.innerText = 'DECONECTAT';

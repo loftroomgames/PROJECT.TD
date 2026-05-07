@@ -1,5 +1,5 @@
 let isConnected = false;
-let currentUser = localStorage.getItem('userEmail');
+let currentUser = localStorage.getItem('userUsername');
 let wasActive = false;
 
 
@@ -77,13 +77,13 @@ async function checkCameraStatus() {
 
 async function handleAuth(type)
 {
-    const username = document.getElementById('auth-user').value;
+    const username = document.getElementById('auth-username').value;
     const password = document.getElementById('auth-pass').value;
 
     const res = await fetch(`/api/${type}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ username, password })
     });
 
     const data = await res.json();
@@ -99,6 +99,16 @@ async function handleAuth(type)
 }
 
 
+function handleLogoff()
+{
+    localStorage.removeItem('userUsername');
+    currentUser = null;
+    updateAuthUI();
+    closeWindow('camera-window');
+    alert("Te-ai delogat!");
+}
+
+
 async function requestControl()
 {
     if(!currentUser) return alert("Trebuie să te loghezi!");
@@ -110,13 +120,14 @@ async function requestControl()
 }
 
 
+
 async function sendServoCommand(val)
 {
     document.getElementById('angle-val').innerText = val;
     await fetch('/api/command', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ uername: currentUser, angle: parseInt(val) })
+        body: JSON.stringify({ username: currentUser, angle: parseInt(val) }) 
     });
 }
 

@@ -12,8 +12,8 @@ const USERS_FILE = path.join(__dirname, 'users.json');
 // Starea sistemului
 let systemState = {
     servoAngle: 90,
-    activeUser: null, // Email-ul celui care controlează acum
-    queue: [],        // Lista de email-uri care așteaptă
+    activeUser: null, // username-ul celui care controlează acum
+    queue: [],        // Lista de username-uri care așteaptă
     timeLeft: 0,
     lastCheckIn: 0
 };
@@ -45,31 +45,33 @@ setInterval(() => {
     }
 }, 1000);
 
-// --- RUTE API ---
 
+// --- RUTE API ---
 app.post('/api/register', (req, res) => {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
     let users = getUsers();
-    if (users.find(u => u.email === email)) return res.status(400).json({ error: "Utilizator existent" });
-    users.push({ email, password });
+    if (users.find(u => u.username === username)) return res.status(400).json({ error: "Utilizator existent" });
+    users.push({ username, password });
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
     res.json({ success: true });
 });
 
+
 app.post('/api/login', (req, res) => {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
     let users = getUsers();
-    const user = users.find(u => u.email === email && u.password === password);
+    const user = users.find(u => u.username === username && u.password === password);
     if (!user) return res.status(401).json({ error: "Date invalide" });
-    res.json({ success: true, email: user.email });
+    res.json({ success: true, username: user.username });
 });
 
+
 app.post('/api/request-control', (req, res) => {
-    const { email } = req.body;
-    if (systemState.activeUser === email || systemState.queue.includes(email)) {
+    const { username } = req.body;
+    if (systemState.activeUser === username || systemState.queue.includes(username)) {
         return res.json({ message: "Ești deja în listă" });
     }
-    systemState.queue.push(email);
+    systemState.queue.push(username);
     res.json({ success: true });
 });
 
@@ -86,8 +88,8 @@ app.get('/api/status', (req, res) => {
 
 
 app.post('/api/command', (req, res) => {
-    const { email, angle } = req.body;
-    if (systemState.activeUser === email) {
+    const { username, angle } = req.body;
+    if (systemState.activeUser === username) {
         systemState.servoAngle = angle;
         return res.json({ success: true });
     }

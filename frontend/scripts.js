@@ -102,12 +102,13 @@ async function handleAuth(type)
             localStorage.setItem('userUsername', username);
             currentUser = username;
             updateAuthUI();
-            alert("Logat cu succes!");
             closeWindow('login-window');
-        } else alert("Înregistrat!");
+        } else {
+			alert("Înregistrat cu succes!");
+			closeWindow('login-window');
+		}
     } else alert(data.error);
 }
-
 
 
 function handleLogoff()
@@ -116,7 +117,6 @@ function handleLogoff()
     currentUser = null;
     updateAuthUI();
     closeWindow('camera-window');
-    alert("Te-ai delogat!");
 }
 
 

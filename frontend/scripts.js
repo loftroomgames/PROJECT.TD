@@ -3,6 +3,8 @@ let currentUser = localStorage.getItem('userUsername');
 let wasActive = false;
 
 
+
+// Actualizare ceas din bara
 function updateClock()
 {
     const now = new Date();
@@ -14,6 +16,8 @@ function updateClock()
 }
 
 
+
+// Actualizare grafica pt. conexiunea cu ESP32
 function setConnection(status)
 {
     isConnected = status;
@@ -35,13 +39,12 @@ function setConnection(status)
 }
 
 
+
 function openWindow(id)
 {
-    //if(!isConnected) return;
     document.getElementById(id).style.display = 'block';
     document.getElementById("welcome-window").style.display = 'none';
 }
-
 
 function closeWindow(id)
 {
@@ -53,11 +56,13 @@ function closeWindow(id)
 
 document.addEventListener('DOMContentLoaded', () => {
     updateClock();
-    updateAuthUI(); // <--- Verificăm starea la pornire
+    updateAuthUI();
     setInterval(updateClock, 1000);
 });
 
 
+
+// NOT USED YET
 async function checkCameraStatus() {
     try {
         const response = await fetch('/api/status');
@@ -78,6 +83,8 @@ async function checkCameraStatus() {
 }
 
 
+
+// Tratare autentificare
 async function handleAuth(type)
 {
     const username = document.getElementById('auth-username').value;
@@ -102,6 +109,7 @@ async function handleAuth(type)
 }
 
 
+
 function handleLogoff()
 {
     localStorage.removeItem('userUsername');
@@ -112,9 +120,12 @@ function handleLogoff()
 }
 
 
+
+// Buton "Cere Control"
 async function requestControl()
 {
     if(!currentUser) return alert("Trebuie să te loghezi!");
+	
     await fetch('/api/request-control', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -124,48 +135,54 @@ async function requestControl()
 
 
 
+// Suprascrie systemState.servoAngle pentru citire
 async function sendServoCommand(val)
 {
     document.getElementById('angle-val').innerText = val;
+	
     await fetch('/api/command', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: currentUser, angle: parseInt(val) }) 
+        body: JSON.stringify({ username: currentUser, angle: parseInt(val) })
     });
 }
 
 
-async function updateStatus() {
+
+// Update interfete conform datelor primite
+async function updateStatus()
+{
     try {
         const res = await fetch('/api/status');
         const state = await res.json();
         
-        // Actualizăm LED-ul și butonul de pe ecranul principal
+        // Actualizare status ESP si butonul Control
         setConnection(state.isConnected);
 
-        // --- LOGICA DE KICK-OUT (Dacă se pierde ESP-ul) ---
+		// KICK: conexiune pierduta cu ESP
         if (!state.isConnected) {
             if (document.getElementById('camera-window').style.display === 'block') {
-                alert("Conexiune pierdută (ESP32 Offline)!");
+                alert("Conexiune pierdută [ESP32 Offline]!");
                 closeWindow('camera-window');
             }
             wasActive = false;
-            return; // Oprim execuția restului funcției dacă nu avem conexiune
+            return;
         }
 
         const info = document.getElementById('queue-info');
         const controlArea = document.getElementById('control-area');
         const btnRequest = document.getElementById('btn-request');
 
-        // --- LOGICA DE KICK-OUT (Dacă expiră timpul) ---
-        if (wasActive && state.activeUser !== currentUser) {
+		// KICK: timpul a expirat
+        if (wasActive && state.activeUser !== currentUser && state.activeUser !== null)
+		{
             alert("Timpul tău a expirat!");
             closeWindow('camera-window');
             wasActive = false;
             return;
         }
 
-        // Gestionare interfață Control
+
         if (state.activeUser === currentUser) {
             wasActive = true;
             info.innerText = "EȘTI LA CONTROL!";
@@ -196,15 +213,15 @@ function updateAuthUI()
     const logoffBtn = document.getElementById('logoff-btn');
     
     if (currentUser) {
-        authStatus.innerText = `Utilizator: ${currentUser}`;
+        authStatus.innerText = `🔓: ${currentUser}`;
         authStatus.style.color = "#00ff00";
         controlBtn.disabled = false;
-        if(logoffBtn) logoffBtn.style.display = "inline-block"; // Arată Logoff
+        if(logoffBtn) logoffBtn.style.display = "inline-block";
     } else {
-        authStatus.innerText = "Logare necesară";
+        authStatus.innerText = "🔒 Logare necesară";
         authStatus.style.color = "red";
         controlBtn.disabled = true;
-        if(logoffBtn) logoffBtn.style.display = "none"; // Ascunde Logoff
+        if(logoffBtn) logoffBtn.style.display = "none";
     }
 }
 

@@ -3,81 +3,102 @@
 #include <ESP32Servo.h>
 #include <ArduinoJson.h>
 
-// --- CONFIGURARE PINI ---
-const int servoPin = 13;
-const int ledWifiBlue = 2;   // LED Albastru pentru WiFi
-const int ledServerGreen = 4; // LED Verde pentru Server
 
-// --- CONFIGURARE RETEA & SERVER ---
+
+// CONFIGURARE PINI ==================================================================
+const int servoPin = 13;
+const int ledWifiBlue = 2;   
+const int ledServerGreen = 4;
+
+
+
+// CONFIGURARE RETEA & SERVER ========================================================
 const char* ssid = "";
 const char* password = "";
 const char* statusUrl = "https://project-td.onrender.com/api/esp/angle";
 
+
+
+// CONFIGURARE COMPONENTE ============================================================
 Servo myServo;
+
+
 
 void setup()
 {
-  Serial.begin(115200);
-  
-  // Inițializare LED-uri
-  pinMode(ledWifiBlue, OUTPUT);
-  pinMode(ledServerGreen, OUTPUT);
-  
-  // Ne asigurăm că sunt stinse la început
-  digitalWrite(ledWifiBlue, LOW);
-  digitalWrite(ledServerGreen, LOW);
+	Serial.begin(115200); // Comunicare Serial pt. DEBUG
 
-  myServo.attach(servoPin);
-  myServo.write(90); // Poziție de start
-  
-  Serial.print("Conectare WiFi...");
-  WiFi.begin(ssid, password);
+	// Init. Led-uri
+	pinMode(ledWifiBlue, OUTPUT);
+	pinMode(ledServerGreen, OUTPUT);
+	digitalWrite(ledWifiBlue, LOW);
+	digitalWrite(ledServerGreen, LOW);
+
+	// Init. Servo
+	myServo.attach(servoPin);
+	moveToAngle(90);
+
+	// Init. WiFi
+	Serial.print("Conectare WiFi ...");
+	WiFi.begin(ssid, password);
 }
+
+
 
 void loop()
 {
-  // 1. Logică LED WiFi (Albastru)
-  if (WiFi.status() == WL_CONNECTED) {
-    digitalWrite(ledWifiBlue, HIGH); // WiFi OK
-  } else {
-    digitalWrite(ledWifiBlue, LOW);  // WiFi picat
-    Serial.print(".");
-    return; // Nu mergem mai departe dacă nu avem net
-  }
+	
+	// Verificare status WiFi:
+	if (WiFi.status() == WL_CONNECTED) {
+		// WiFi OK
+		digitalWrite(ledWifiBlue, HIGH);
+	} else {
+		// WiFi NOK
+		digitalWrite(ledWifiBlue, LOW);
+		Serial.print(".");
+		return;
+	}
 
-  // 2. Cerere către Server
-  HTTPClient http;
-  http.begin(statusUrl);
-  int httpCode = http.GET();
 
-  if (httpCode == 200) {
-    digitalWrite(ledServerGreen, HIGH); // Server OK
-    
-    String payload = http.getString();
-    StaticJsonDocument<200> doc;
-    deserializeJson(doc, payload);
-    
-    int targetAngle = doc["angle"];
-    moveToAngle(targetAngle);
-  } else {
-    digitalWrite(ledServerGreen, LOW); // Server inaccesibil sau eroare
-    Serial.printf("Eroare Server: %d\n", httpCode);
-  }
-  
-  http.end();
-  delay(500); // Verificăm statusul de 2 ori pe secundă
+	// Cerere catre Server:
+	HTTPClient http;
+	http.begin(statusUrl);
+	int httpCode = http.GET();
+
+	if (httpCode == 200) {
+		// Conexiune Server OK
+		digitalWrite(ledServerGreen, HIGH);
+
+		String payload = http.getString(); // citeste datele trimise res.json()
+		StaticJsonDocument<200> doc;       // crearea obiectului ArduinoJSON
+		deserializeJson(doc, payload);     // citirea JSON-ului text payload ==> structura JSON
+		int targetAngle = doc["angle"];    // citeste cheia "angle" converteste in int
+		
+		moveToAngle(targetAngle);
+	} else {
+		// Conexiune Server NOK
+		digitalWrite(ledServerGreen, LOW);
+		Serial.printf("Eroare Server: %d\n", httpCode);
+	}
+
+	http.end();
+	delay(500);
 }
 
-void moveToAngle(int targetAngle
+
+
+void moveToAngle(int targetAngle)
 {
-  int currentAngle = myServo.read();
-  if (currentAngle == targetAngle) return;
 
-  int step = (targetAngle > currentAngle) ? 1 : -1;
+	int currentAngle = myServo.read();
+	if (currentAngle == targetAngle) return;
 
-  while (currentAngle != targetAngle) {
-    currentAngle += step;
-    myServo.write(currentAngle);
-    delay(5); // Viteza pentru mișcare smooth
-  }
+	int step = (targetAngle > currentAngle) ? 1 : -1;
+
+	while (currentAngle != targetAngle)
+	{
+		currentAngle += step;
+		myServo.write(currentAngle);
+		delay(5);
+	}
 }

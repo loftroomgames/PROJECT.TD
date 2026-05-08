@@ -8,100 +8,131 @@ app.use(cors());
 app.use(express.json());
 
 const USERS_FILE = path.join(__dirname, 'users.json');
+const controlTime = 30;
 
-// Starea sistemului
+
+// Starile sistemului:
 let systemState = {
     servoAngle: 90,
-    activeUser: null, // username-ul celui care controlează acum
-    queue: [],        // Lista de username-uri care așteaptă
+    activeUser: null,  // utilizator in control
+    queue: [],
     timeLeft: 0,
-    lastCheckIn: 0
+    lastCheckIn: 0    // pt. determinare conexiune cu ESP32
 };
 
-// Încărcare utilizatori din JSON
-function getUsers() {
+
+
+// Incarcarea utlizatorilor din JSON generat
+function getUsers()
+{
     if (!fs.existsSync(USERS_FILE)) return [];
     return JSON.parse(fs.readFileSync(USERS_FILE));
 }
 
-// Logică Coadă (Queue) - Se execută la fiecare secundă
+
+
+// Queue manager => 1sec loop
 setInterval(() => {
     if (systemState.activeUser) {
         systemState.timeLeft--;
         if (systemState.timeLeft <= 0) {
-            // Timpul a expirat, trecem la următorul
+
             if (systemState.queue.length > 0) {
                 systemState.activeUser = systemState.queue.shift();
-                systemState.timeLeft = 30;
+                systemState.timeLeft = controlTime;
             } else {
                 systemState.activeUser = null;
                 systemState.timeLeft = 0;
             }
+			
         }
     } else if (systemState.queue.length > 0) {
-        // Nu e nimeni la control, dar cineva așteaptă
         systemState.activeUser = systemState.queue.shift();
-        systemState.timeLeft = 30;
+        systemState.timeLeft = controlTime;
     }
 }, 1000);
 
 
-// --- RUTE API ---
+
+// RUTE API ==========================================================================================================
+// Inregistrare utilizator
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
+	
+	if(!username || !password || !username.trim() || !password.trim()) return res.status(400).json({error: "Câmp gol sau invalid!"});
+	
     let users = getUsers();
     if (users.find(u => u.username === username)) return res.status(400).json({ error: "Utilizator existent" });
+	
     users.push({ username, password });
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
     res.json({ success: true });
 });
 
 
+
+// Logare utilizator
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     let users = getUsers();
+	
     const user = users.find(u => u.username === username && u.password === password);
+	
     if (!user) return res.status(401).json({ error: "Date invalide" });
     res.json({ success: true, username: user.username });
 });
 
 
+
+// Ruta pentru butonul "Cere control"
 app.post('/api/request-control', (req, res) => {
     const { username } = req.body;
-    if (systemState.activeUser === username || systemState.queue.includes(username)) {
+	
+    if (systemState.activeUser === username || systemState.queue.includes(username))
+	{
         return res.json({ message: "Ești deja în listă" });
     }
+	
     systemState.queue.push(username);
     res.json({ success: true });
 });
 
 
+
+// Trimite date pt. updateStatus()
 app.get('/api/status', (req, res) => {
-    // Dacă ultima verificare a fost acum mai puțin de 6 secunde, e online
-    const isOnline = (Date.now() - systemState.lastCheckIn) < 6000;
+    const isOnline = (Date.now() - systemState.lastCheckIn) < 10000;   // Ultimul GET de la ESP32, pt. verificare conexiune
     
     res.json({
-        ...systemState,
-        isConnected: isOnline // Trimitem "true" sau "false" către Frontend
+        ...systemState,            // ... = spread operator, despacheteaza systemState
+        isConnected: isOnline
     });
 });
 
 
+
+// Ruta pentru modificarea systemState.servoAngle de catre frontend
 app.post('/api/command', (req, res) => {
     const { username, angle } = req.body;
-    if (systemState.activeUser === username) {
+	
+    if (systemState.activeUser === username)
+	{
         systemState.servoAngle = angle;
         return res.json({ success: true });
     }
-    res.status(403).json({ error: "Nu ai controlul acum" });
+	
+    res.status(403).json({ error: "Nu ai controlul acum!" });
 });
 
 
-// Rută specială pentru ESP32 (doar citește unghiul)
+
+// Ruta pentru ESP32 (citirea unghiului)
 app.get('/api/esp/angle', (req, res) => {
     systemState.lastCheckIn = Date.now();
     res.json({ angle: systemState.servoAngle });
 });
+
+
 
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.listen(process.env.PORT || 3000, () => console.log("Server pornit!"));

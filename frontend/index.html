@@ -12,13 +12,17 @@
 <body>
 
     <div class="taskbar-top">
+	
         <div class="header-content">
             <span class="system-title">🎦 PROJECT.TD</span>
-            <span id="auth-status" style="margin-right: 10px; border-right: 1px solid #808080; padding-right: 10px;">Login</span>
+            <span id="auth-status" style="margin-right: 10px; solid #808080; padding-right: 10px;">Login</span>
             <button id="logoff-btn" onclick="handleLogoff()" style="display:none; margin: 0 10px; cursor:pointer;">Logoff</button>
             <div id="clock" class="system-tray">00:00:00</div>
         </div>
+		
     </div>
+
+
 
     <div class="desktop">
 
@@ -29,31 +33,39 @@
             </div>
 
             <div class="window-body">
+			
                 <div class="welcome-message">
                     <p>Bun venit în Centrul de Control!</p>
                 </div>
                 
                 <div class="buttons-container">
-                    <button class="control-button" id="main-control-btn" onclick="openWindow('camera-window')">Control</button>
-                    <button class="control-button" onclick="openWindow('login-window')">Login</button>
+                    <button class="control-button" id="main-control-btn" onclick="openWindow('camera-window')">🕹️ Control</button>
+                    <button class="control-button" onclick="openWindow('login-window')">🔑 Login</button>
                 </div>
+				
             </div>
 
 
+
             <div class="status-bar">
+			
                 <div class="status-field" id="esp-status">
                     Status ESP: <span id="status-text">DECONECTAT</span>
                     <div id="connection-led" class="indicator-red"></div>
                 </div>
+				
             </div>
         </div>
 
 
+
         <div id="login-window" class="window" style="display: none;">
+		
             <div class="window-title">
-                <span>System Auth</span>
+                <span>Autentificare</span>
                 <button class="win-btn" onclick="closeWindow('login-window')">X</button>
             </div>
+			
             <div class="window-body">
                 <input type="text" id="auth-username" placeholder="Nume Utilizator" class="win-input">
                 <input type="password" id="auth-pass" placeholder="Parola" class="win-input">
@@ -62,25 +74,33 @@
                     <button onclick="handleAuth('register')" class="control-button small">Register</button>
                 </div>
             </div>
+			
         </div>
 
 
+
         <div id="camera-window" class="window" style="display: none;">
+		
             <div class="window-title">
                 <span>Control Panel</span>
                 <button class="win-btn" onclick="closeWindow('camera-window')">X</button>
             </div>
+			
             <div class="window-body">
                 <div id="queue-info">Status: Se încarcă...</div>
+				
                 <div id="control-area" style="display: none; text-align: center; margin-top: 20px;">
                     <h3>CONTROL SERVO</h3>
                     <input type="range" id="servo-slider" min="0" max="180" value="90" oninput="sendServoCommand(this.value)">
                     <p>Unghi: <span id="angle-val">90</span>°</p>
                     <div id="timer-display" style="font-weight: bold; color: red;"></div>
                 </div>
+				
                 <button id="btn-request" onclick="requestControl()" class="control-button">Cere Control (30s)</button>
             </div>
+			
         </div>
+
 
 
     </div>

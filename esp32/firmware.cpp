@@ -36,7 +36,8 @@ void setup()
 
 	// Init. Servo
 	myServo.attach(servoPin);
-	moveToAngle(90);
+	myServo.write(90);
+	//rotateToAngle(90);
 
 	// Init. WiFi
 	Serial.print("Conectare WiFi ...");
@@ -74,7 +75,8 @@ void loop()
 		deserializeJson(doc, payload);     // citirea JSON-ului text payload ==> structura JSON
 		int targetAngle = doc["angle"];    // citeste cheia "angle" converteste in int
 		
-		moveToAngle(targetAngle);
+		myServo.write(targetAngle);
+		//rotateToAngle(targetAngle);
 	} else {
 		// Conexiune Server NOK
 		digitalWrite(ledServerGreen, LOW);
@@ -87,7 +89,8 @@ void loop()
 
 
 
-void moveToAngle(int targetAngle)
+// NOT USED YET
+void rotateToAngle(int targetAngle)
 {
 
 	int currentAngle = myServo.read();
@@ -99,6 +102,6 @@ void moveToAngle(int targetAngle)
 	{
 		currentAngle += step;
 		myServo.write(currentAngle);
-		delay(5);
+		delay(10);
 	}
 }

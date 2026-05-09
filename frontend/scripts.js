@@ -85,38 +85,62 @@ async function checkCameraStatus() {
 
 
 // Tratare autentificare
-async function handleAuth(type)
-{
+async function handleAuth(type) {
     const username = document.getElementById('auth-username').value;
     const password = document.getElementById('auth-pass').value;
 
+    if (type === 'login' && currentUser)
+	{
+        handleLogoff();
+        return;
+    }
+
     const res = await fetch(`/api/${type}`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
     });
 
+
     const data = await res.json();
-    if(data.success) {
-        if(type === 'login') {
+    if (!data.success)
+	{
+        alert(data.error);
+        return;
+    }
+
+
+    switch (type) {
+
+        case 'login':
             localStorage.setItem('userUsername', username);
             currentUser = username;
             updateAuthUI();
             closeWindow('login-window');
-        } else {
-			alert("Înregistrat cu succes!");
-			closeWindow('login-window');
-		}
-    } else alert(data.error);
+            break;
+
+        case 'register':
+            alert("Înregistrat cu succes!");
+            closeWindow('login-window');
+            break;
+
+        case 'delete':
+            alert("Cont șters cu succes!");
+			handleLogoff();
+            break;
+    }
 }
 
 
+
+// Tratare log out
 function handleLogoff()
 {
     localStorage.removeItem('userUsername');
     currentUser = null;
-    updateAuthUI();
     closeWindow('camera-window');
+	closeWindow('login-window');
+    updateAuthUI();
 }
 
 
@@ -183,6 +207,7 @@ async function updateStatus()
         }
 
 
+		// UPDATE: UI Cerere control
         if (state.activeUser === currentUser) {
             wasActive = true;
             info.innerText = "EȘTI LA CONTROL!";
@@ -211,16 +236,34 @@ function updateAuthUI()
     const authStatus = document.getElementById('auth-status');
     const controlBtn = document.getElementById('main-control-btn');
     const logoffBtn = document.getElementById('logoff-btn');
+	
+	const loginBtn = document.getElementById('login-btn');
+	const registerAccountBtn = document.getElementById('reg-account-btn');
+	const deleteAccountBtn = document.getElementById('del-account-btn');
+	
+	const userField = document.getElementById('auth-username');
+	const passField = document.getElementById('auth-pass');
+
     
     if (currentUser) {
         authStatus.innerText = `🔓: ${currentUser}`;
         authStatus.style.color = "#00ff00";
         controlBtn.disabled = false;
+		deleteAccountBtn.disabled = false;
+		registerAccountBtn.disabled = true;
+		userField.disabled = true;
+		passField.disabled = true;
+		loginBtn.textContent = "Log out";
         if(logoffBtn) logoffBtn.style.display = "inline-block";
     } else {
         authStatus.innerText = "🔒 Logare necesară";
-        authStatus.style.color = "red";
+        authStatus.style.color = "#ff0000";
         controlBtn.disabled = true;
+		deleteAccountBtn.disabled = true;
+		registerAccountBtn.disabled = false;
+		userField.disabled = false;
+		passField.disabled = false;
+		loginBtn.textContent = "Log in";
         if(logoffBtn) logoffBtn.style.display = "none";
     }
 }

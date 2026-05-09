@@ -4,23 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TD.CameraControl</title>
+    <title>ESP32 Camera-Control</title>
     <link rel="stylesheet" href="styles.css">
+	
     <script src="scripts.js" defer></script>
 </head>
 
 <body>
 
-    <div class="taskbar-top">
-	
-        <div class="header-content">
-            <span class="system-title">🎦 PROJECT.TD</span>
-            <span id="auth-status" style="margin-right: 10px; solid #808080; padding-right: 10px;">Login</span>
-            <button id="logoff-btn" onclick="handleLogoff()" style="display:none; margin: 0 10px; cursor:pointer;">Logoff</button>
-            <div id="clock" class="system-tray">00:00:00</div>
-        </div>
-		
-    </div>
+	<div class="taskbar-top">
+	  <div class="header-content">
+
+		<div class="header-left">
+		  <span id="auth-status">Login</span>
+		  <button id="logoff-btn" onclick="handleLogoff()" style="display:none;">Logoff</button>
+		</div>
+
+		<div id="clock" class="system-tray">00:00:00</div>
+
+	  </div>
+	</div>
 
 
 
@@ -29,22 +32,21 @@
         <div id="welcome-window" class="window">
 
             <div class="window-title">
-                <span>Camera Control [v1.0]</span>
+                <span>ESP32 Camera-Control [v1.5]</span>
             </div>
 
             <div class="window-body">
 			
-                <div class="welcome-message">
+                <div class="welcome-message" style="text-align: center">
                     <p>Bun venit în Centrul de Control!</p>
                 </div>
                 
                 <div class="buttons-container">
                     <button class="control-button" id="main-control-btn" onclick="openWindow('camera-window')">🕹️ Control</button>
-                    <button class="control-button" onclick="openWindow('login-window')">🔑 Login</button>
+                    <button class="control-button" onclick="openWindow('login-window')">🔑 Autentificare</button>
                 </div>
 				
             </div>
-
 
 
             <div class="status-bar">
@@ -67,11 +69,22 @@
             </div>
 			
             <div class="window-body">
-                <input type="text" id="auth-username" placeholder="Nume Utilizator" class="win-input">
-                <input type="password" id="auth-pass" placeholder="Parola" class="win-input">
-                <div class="form-buttons">
-                    <button onclick="handleAuth('login')" class="control-button small">Login</button>
-                    <button onclick="handleAuth('register')" class="control-button small">Register</button>
+
+				<div class="input-row">
+				  <span class="input-icon">👤</span>
+				  <input type="text" id="auth-username" placeholder="Nume Utilizator" class="win-input" style="margin-bottom: 16px">
+				</div>
+
+				<div class="input-row">
+				  <span class="input-icon">🔑</span>
+				  <input type="password" id="auth-pass" placeholder="Parolă" class="win-input" style="margin-bottom: 16px">
+				</div>
+
+                <div class="buttons-container">
+                    <button id="login-btn" onclick="handleAuth('login')" class="control-button small">Login</button>
+                    <button id="reg-account-btn" onclick="handleAuth('register')" class="control-button small">Înregistreză</button>
+                    <button id="del-account-btn" onclick="handleAuth('delete')" 
+					class="control-button small" style="margin-top: 48px; background-color: #770000;">Șterge cont</button>					
                 </div>
             </div>
 			

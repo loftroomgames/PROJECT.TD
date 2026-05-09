@@ -254,7 +254,7 @@ function updateAuthUI()
 		userField.disabled = true;
 		passField.disabled = true;
 		loginBtn.textContent = "Log out";
-        if(logoffBtn) logoffBtn.style.display = "inline-block";
+        if(logoffBtn) logoffBtn.style.display = "none";
     } else {
         authStatus.innerText = "🔒 Logare necesară";
         authStatus.style.color = "#ff0000";

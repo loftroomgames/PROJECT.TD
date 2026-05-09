@@ -1,3 +1,5 @@
+// Board: ESP32 Dev Module
+
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ESP32Servo.h>

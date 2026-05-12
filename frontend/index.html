@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32 Camera-Control</title>
     <link rel="stylesheet" href="styles.css">
-	
+
     <script src="scripts.js" defer></script>
 </head>
 
@@ -16,9 +16,7 @@
 	  <div class="header-content">
 
 		<div class="header-left">
-		  <span id="auth-status">Login</span>
-		  <button id="logoff-btn" onclick="handleLogoff()" style="display:none;">Logoff</button>
-		</div>
+		  <span id="auth-status">Login</span></div>
 
 		<div id="clock" class="system-tray">00:00:00</div>
 
@@ -42,7 +40,7 @@
                 </div>
                 
                 <div class="buttons-container">
-                    <button class="control-button" id="main-control-btn" onclick="openWindow('camera-window')">🕹️ Control</button>
+                    <button class="control-button" id="main-control-btn" onclick="openControl()">🕹️ Control</button>
                     <button class="control-button" onclick="openWindow('login-window')">🔑 Autentificare</button>
                 </div>
 				
@@ -92,25 +90,55 @@
 
 
 
-        <div id="camera-window" class="window" style="display: none;">
+        <div id="camera-window" class="window" style="display: none">
 		
             <div class="window-title">
                 <span>Control Panel</span>
                 <button class="win-btn" onclick="closeWindow('camera-window')">X</button>
             </div>
 			
-            <div class="window-body">
-                <div id="queue-info">Status: Se încarcă...</div>
+			<div class="window-body">
+
+				<div class="camera-layout">
+
+
+				  <div class="image-zone">
+					<div class="image-placeholder">📶 NO SIGNAL</div>
+				  </div>
+
+
+				  <div class="controls-zone">
+
+					<label class="control-label"><span id="angle-val">90</span>⁰</label>
+					<input
+					  type="range"
+					  min="0"
+					  max="180"
+					  value="90"
+					  class="angle-slider"
+					  oninput="sendServoCommand(this.value)"
+					>
+
+					<div class="button-row">
+					  <button class="control-button small">📷 Shot</button>
+					  <button class="control-button small">📡 Scan360 </button>
+					</div>
+
+					<div class="toggle">
+					  <input type="checkbox" id="liveToggle">
+					  <label for="liveToggle">🔴 Imagine Live</label>
+					</div>
+
+					<div class="toggle">
+					  <input type="checkbox" id="flashToggle">
+					  <label for="flashToggle">🔦 Flash</label>
+					</div>
+
+				  </div>
+
+				</div>
 				
-                <div id="control-area" style="display: none; text-align: center; margin-top: 20px;">
-                    <h3>CONTROL SERVO</h3>
-                    <input type="range" id="servo-slider" min="0" max="180" value="90" oninput="sendServoCommand(this.value)">
-                    <p>Unghi: <span id="angle-val">90</span>°</p>
-                    <div id="timer-display" style="font-weight: bold; color: red;"></div>
-                </div>
-				
-                <button id="btn-request" onclick="requestControl()" class="control-button">Cere Control (30s)</button>
-            </div>
+			</div>
 			
         </div>
 

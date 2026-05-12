@@ -1,275 +1,274 @@
 let isConnected = false;
 let currentUser = localStorage.getItem('userUsername');
-let wasActive = false;
+let activeUser = null;
 
-
-
-// Actualizare ceas din bara
-function updateClock()
-{
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    
-    document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+function $(id) {
+  return document.getElementById(id);
 }
 
-
-
-// Actualizare grafica pt. conexiunea cu ESP32
-function setConnection(status)
-{
-    isConnected = status;
-    const led = document.getElementById('connection-led');
-    const text = document.getElementById('status-text');
-    const controlButton = document.querySelector('button[onclick*="camera-window"]');
-
-    if(status) {
-        led.className = 'indicator-green';
-        text.innerText = 'CONECTAT';
-        if(controlButton) {
-            controlButton.disabled = !currentUser; 
-        }
-    } else {
-        led.className = 'indicator-red';
-        text.innerText = 'DECONECTAT';
-        if(controlButton) controlButton.disabled = true; 
-    }
+// Clock
+function updateClock() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const clock = $('clock');
+  if (clock) clock.textContent = `${hours}:${minutes}:${seconds}`;
 }
 
+// Update ESP connection UI + button availability
+function setConnection(status) {
+  isConnected = !!status;
 
+  const led = $('connection-led');
+  const text = $('status-text');
+  if (led) led.className = isConnected ? 'indicator-green' : 'indicator-red';
+  if (text) text.innerText = isConnected ? 'CONECTAT' : 'DECONECTAT';
 
-function openWindow(id)
-{
-    document.getElementById(id).style.display = 'block';
-    document.getElementById("welcome-window").style.display = 'none';
+  updateControlButton();
 }
 
-function closeWindow(id)
-{
-    document.getElementById(id).style.display = 'none';
-    document.getElementById("welcome-window").style.display = 'flex';
+function updateControlButton() {
+  const controlBtn = $('main-control-btn');
+  if (!controlBtn) return;
+
+  // Enabled when:
+  // - logged in
+  // - ESP connected
+  // - nobody is in control OR you are already the active user
+  const allowed = !!currentUser && isConnected && (!activeUser || activeUser === currentUser);
+  controlBtn.disabled = !allowed;
+
+  // Optional: show who is in control on the button label
+  if (!currentUser) {
+    controlBtn.textContent = '🕹️ Control';
+  } else if (activeUser && activeUser !== currentUser) {
+    controlBtn.textContent = `🔒 La control: ${activeUser}`;
+  } else {
+    controlBtn.textContent = '🕹️ Control';
+  }
 }
 
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    updateClock();
-    updateAuthUI();
-    setInterval(updateClock, 1000);
-});
-
-
-
-// NOT USED YET
-async function checkCameraStatus() {
-    try {
-        const response = await fetch('/api/status');
-        if (!response.ok) throw new Error("Server negăsit");
-        
-        const data = await response.json();
-        console.log("Date primite de la server:", data);
-        
-        setConnection(data.isConnected);
-    } catch (error) {
-        console.error("Eroare la Fetch:", error);
-        setConnection(false);
-
-        alert("S-a pierdut conexiunea cu ESP32!");
-        closeWindow('camera-window');
-        closeWindow('login-window');
-    }
+// Window helpers (use classes; keep compatibility with your existing HTML)
+function openWindow(id) {
+  const target = $(id);
+  const welcome = $('welcome-window');
+  if (target) target.style.display = 'flex';
+  if (welcome) welcome.style.display = 'none';
 }
 
+async function closeWindow(id) {
+  // If leaving the control window, release control.
+  if (id === 'camera-window') {
+    await releaseControl();
+  }
 
+  const target = $(id);
+  const welcome = $('welcome-window');
+  if (target) target.style.display = 'none';
+  if (welcome) welcome.style.display = 'flex';
+}
 
-// Tratare autentificare
-async function handleAuth(type) {
-    const username = document.getElementById('auth-username').value;
-    const password = document.getElementById('auth-pass').value;
+// Acquire control when trying to open the control window
+async function openControl() {
+  if (!currentUser) {
+    alert('Trebuie să te loghezi!');
+    return;
+  }
+  if (!isConnected) {
+    alert('ESP32 nu este conectat.');
+    return;
+  }
 
-    if (type === 'login' && currentUser)
-	{
-        handleLogoff();
-        return;
-    }
-
-    const res = await fetch(`/api/${type}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+  try {
+    const res = await fetch('/api/control/acquire', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser })
     });
-
 
     const data = await res.json();
-    if (!data.success)
-	{
-        alert(data.error);
-        return;
+    if (!res.ok || !data.success) {
+      activeUser = data.activeUser || activeUser;
+      updateControlButton();
+      alert(data.error || 'Nu poți prelua controlul acum!');
+      return;
     }
 
-
-    switch (type) {
-
-        case 'login':
-            localStorage.setItem('userUsername', username);
-            currentUser = username;
-            updateAuthUI();
-            closeWindow('login-window');
-            break;
-
-        case 'register':
-            alert("Înregistrat cu succes!");
-            closeWindow('login-window');
-            break;
-
-        case 'delete':
-            alert("Cont șters cu succes!");
-			handleLogoff();
-            break;
-    }
+    activeUser = data.activeUser;
+    updateControlButton();
+    openWindow('camera-window');
+  } catch (e) {
+    console.error(e);
+    alert('Eroare de rețea.');
+  }
 }
 
+async function releaseControl() {
+  if (!currentUser) return;
+  if (activeUser !== currentUser) return;
 
-
-// Tratare log out
-function handleLogoff()
-{
-    localStorage.removeItem('userUsername');
-    currentUser = null;
-    closeWindow('camera-window');
-	closeWindow('login-window');
-    updateAuthUI();
-}
-
-
-
-// Buton "Cere Control"
-async function requestControl()
-{
-    if(!currentUser) return alert("Trebuie să te loghezi!");
-	
-    await fetch('/api/request-control', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: currentUser })
+  try {
+    await fetch('/api/control/release', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser }),
+      keepalive: true
     });
+  } catch {
+    // best-effort
+  } finally {
+    activeUser = null;
+    updateControlButton();
+  }
 }
 
+// Servo command
+async function sendServoCommand(val) {
+  const angle = parseInt(val, 10);
+  const angleLabel = $('angle-val');
+  if (angleLabel) angleLabel.innerText = String(angle);
 
-
-// Suprascrie systemState.servoAngle pentru citire
-async function sendServoCommand(val)
-{
-    document.getElementById('angle-val').innerText = val;
-	
-    await fetch('/api/command', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: currentUser, angle: parseInt(val) })
+  try {
+    const res = await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, angle })
     });
-}
 
-
-
-// Update interfete conform datelor primite
-async function updateStatus()
-{
-    try {
-        const res = await fetch('/api/status');
-        const state = await res.json();
-        
-        // Actualizare status ESP si butonul Control
-        setConnection(state.isConnected);
-
-		// KICK: conexiune pierduta cu ESP
-        if (!state.isConnected) {
-            if (document.getElementById('camera-window').style.display === 'block') {
-                alert("Conexiune pierdută [ESP32 Offline]!");
-                closeWindow('camera-window');
-            }
-            wasActive = false;
-            return;
-        }
-
-        const info = document.getElementById('queue-info');
-        const controlArea = document.getElementById('control-area');
-        const btnRequest = document.getElementById('btn-request');
-
-		// KICK: timpul a expirat
-        if (wasActive && state.activeUser !== currentUser && state.activeUser !== null)
-		{
-            alert("Timpul tău a expirat!");
-            closeWindow('camera-window');
-            wasActive = false;
-            return;
-        }
-
-
-		// UPDATE: UI Cerere control
-        if (state.activeUser === currentUser) {
-            wasActive = true;
-            info.innerText = "EȘTI LA CONTROL!";
-            controlArea.style.display = 'block';
-            btnRequest.style.display = 'none';
-            document.getElementById('timer-display').innerText = `Timp rămas: ${state.timeLeft}s`;
-        } else {
-            wasActive = false;
-            controlArea.style.display = 'none';
-            btnRequest.style.display = 'block';
-            if(state.activeUser) {
-                info.innerText = `La control: ${state.activeUser}. În coadă: ${state.queue.length}`;
-            } else {
-                info.innerText = "Sistem liber. Cere controlul!";
-            }
-        }
-    } catch (e) {
-        setConnection(false);
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Comandă respinsă.');
     }
+  } catch (e) {
+    console.error(e);
+  }
 }
 
+// Poll status (updates connection + activeUser)
+async function updateStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const state = await res.json();
 
+    activeUser = state.activeUser;
+    setConnection(state.isConnected);
+  } catch {
+    activeUser = null;
+    setConnection(false);
+  }
+}
 
-function updateAuthUI()
-{
-    const authStatus = document.getElementById('auth-status');
-    const controlBtn = document.getElementById('main-control-btn');
-    const logoffBtn = document.getElementById('logoff-btn');
-	
-	const loginBtn = document.getElementById('login-btn');
-	const registerAccountBtn = document.getElementById('reg-account-btn');
-	const deleteAccountBtn = document.getElementById('del-account-btn');
-	
-	const userField = document.getElementById('auth-username');
-	const passField = document.getElementById('auth-pass');
+// Auth UI
+function updateAuthUI() {
+  const authStatus = $('auth-status');
 
-    
-    if (currentUser) {
-        authStatus.innerText = `🔓: ${currentUser}`;
-        authStatus.style.color = "#00ff00";
-        controlBtn.disabled = false;
-		deleteAccountBtn.disabled = false;
-		registerAccountBtn.disabled = true;
-		userField.disabled = true;
-		passField.disabled = true;
-		loginBtn.textContent = "Log out";
-        if(logoffBtn) logoffBtn.style.display = "none";
-    } else {
-        authStatus.innerText = "🔒 Logare necesară";
-        authStatus.style.color = "#ff0000";
-        controlBtn.disabled = true;
-		deleteAccountBtn.disabled = true;
-		registerAccountBtn.disabled = false;
-		userField.disabled = false;
-		passField.disabled = false;
-		loginBtn.textContent = "Log in";
-        if(logoffBtn) logoffBtn.style.display = "none";
+  const loginBtn = $('login-btn');
+  const registerBtn = $('reg-account-btn');
+  const deleteBtn = $('del-account-btn');
+  const userField = $('auth-username');
+  const passField = $('auth-pass');
+
+  if (currentUser) {
+    if (authStatus) {
+      authStatus.innerText = `🔓: ${currentUser}`;
+      authStatus.style.color = '#00ff00';
     }
+
+    if (deleteBtn) deleteBtn.disabled = false;
+    if (registerBtn) registerBtn.disabled = true;
+    if (userField) userField.disabled = true;
+    if (passField) passField.disabled = true;
+    if (loginBtn) loginBtn.textContent = 'Log out';
+  } else {
+    if (authStatus) {
+      authStatus.innerText = '🔒 Logare necesară';
+      authStatus.style.color = '#ff0000';
+    }
+
+    if (deleteBtn) deleteBtn.disabled = true;
+    if (registerBtn) registerBtn.disabled = false;
+    if (userField) userField.disabled = false;
+    if (passField) passField.disabled = false;
+    if (loginBtn) loginBtn.textContent = 'Login';
+  }
+
+  updateControlButton();
 }
 
+async function handleAuth(type) {
+  const username = $('auth-username')?.value?.trim() ?? '';
+  const password = $('auth-pass')?.value ?? '';
 
+  // Clicking Login while already logged in => logout
+  if (type === 'login' && currentUser) {
+    await handleLogoff();
+    return;
+  }
 
-updateAuthUI();
-setInterval(updateStatus, 1000);
-setInterval(updateClock, 1000);
+  if (!username || (!password && type !== 'delete')) {
+    alert('Completează utilizatorul și parola.');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/${type}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      alert(data.error || 'Eroare.');
+      return;
+    }
+
+    if (type === 'login') {
+      localStorage.setItem('userUsername', username);
+      currentUser = username;
+      updateAuthUI();
+      closeWindow('login-window');
+    } else if (type === 'register') {
+      alert('Înregistrat cu succes!');
+      closeWindow('login-window');
+    } else if (type === 'delete') {
+      alert('Cont șters cu succes!');
+      await handleLogoff();
+    }
+  } catch (e) {
+    console.error(e);
+    alert('Eroare de rețea.');
+  }
+}
+
+async function handleLogoff() {
+  // If user had control, release it.
+  await releaseControl();
+
+  localStorage.removeItem('userUsername');
+  currentUser = null;
+  updateAuthUI();
+
+  await closeWindow('camera-window');
+  await closeWindow('login-window');
+}
+
+// Release control if the tab is closed while controlling
+window.addEventListener('beforeunload', () => {
+  if (currentUser && activeUser === currentUser) {
+    // best effort; keepalive above helps
+    navigator.sendBeacon?.('/api/control/release', new Blob([
+      JSON.stringify({ username: currentUser })
+    ], { type: 'application/json' }));
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateClock();
+  updateAuthUI();
+  updateStatus();
+
+  setInterval(updateClock, 1000);
+  setInterval(updateStatus, 1000);
+});

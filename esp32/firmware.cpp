@@ -12,12 +12,26 @@ const int servoPin = 13;
 const int ledWifiBlue = 2;   
 const int ledServerGreen = 4;
 
+const int SCL = 22;
+const int SDA = 23;
+const int MCLK = 21;
+const int VSYNC = 19;
+const int PCLK = 18;
+
+const int D0 = 25;
+const int D1 = 33;
+const int D2 = 32;
+const int D3 = 35;
+const int D4 = 34;
+const int D5 = 26;
+const int D6 = 27;
+const int D7 = 14;
 
 
 // CONFIGURARE RETEA & SERVER ========================================================
 const char* ssid = "";
 const char* password = "";
-const char* statusUrl = "https://project-td.onrender.com/api/esp/angle";
+const char* angleUrl = "http://192.168.0.62:3000/api/esp/angle";
 
 
 
@@ -53,19 +67,16 @@ void loop()
 	
 	// Verificare status WiFi:
 	if (WiFi.status() == WL_CONNECTED) {
-		// WiFi OK
-		digitalWrite(ledWifiBlue, HIGH);
+		wifiLedFeedback("ok");
 	} else {
-		// WiFi NOK
-		digitalWrite(ledWifiBlue, LOW);
-		Serial.print(".");
+		wifiLedFeedback("search");
 		return;
 	}
 
 
 	// Cerere catre Server:
 	HTTPClient http;
-	http.begin(statusUrl);
+	http.begin(angleUrl);
 	int httpCode = http.GET();
 
 	if (httpCode == 200) {
@@ -106,4 +117,26 @@ void rotateToAngle(int targetAngle)
 		myServo.write(currentAngle);
 		delay(10);
 	}
+}
+
+
+
+void wifiLedFeedback(const char* mode)
+{
+  switch(mode)
+  {
+    case "search":
+      digitalWrite(ledWifiBlue, HIGH);
+      delay(100);
+      digitalWrite(ledWifiBlue, LOW);
+      delay(100);
+      break;
+
+    case "ok":
+      digitalWrite(ledWifiBlue, HIGH);
+      break;
+
+    default:
+      digitalWrite(ledWifiBlue, LOW);
+  }
 }

@@ -1,12 +1,12 @@
-let isConnected = false;
 let currentUser = localStorage.getItem('userUsername');
+let isConnected = false;
 let activeUser = null;
 
-function $(id) {
-  return document.getElementById(id);
-}
+function $(id) { return document.getElementById(id); }
 
-// Clock
+
+
+// Update Ceas
 function updateClock() {
   const now = new Date();
   const hours = String(now.getHours()).padStart(2, '0');
@@ -16,8 +16,11 @@ function updateClock() {
   if (clock) clock.textContent = `${hours}:${minutes}:${seconds}`;
 }
 
+
+
 // Update ESP connection UI + button availability
-function setConnection(status) {
+function setConnection(status)
+{
   isConnected = !!status;
 
   const led = $('connection-led');
@@ -28,7 +31,10 @@ function setConnection(status) {
   updateControlButton();
 }
 
-function updateControlButton() {
+
+
+function updateControlButton()
+{
   const controlBtn = $('main-control-btn');
   if (!controlBtn) return;
 
@@ -49,15 +55,21 @@ function updateControlButton() {
   }
 }
 
+
+
 // Window helpers (use classes; keep compatibility with your existing HTML)
-function openWindow(id) {
+function openWindow(id)
+{
   const target = $(id);
   const welcome = $('welcome-window');
   if (target) target.style.display = 'flex';
   if (welcome) welcome.style.display = 'none';
 }
 
-async function closeWindow(id) {
+
+
+async function closeWindow(id)
+{
   // If leaving the control window, release control.
   if (id === 'camera-window') {
     await releaseControl();
@@ -69,8 +81,11 @@ async function closeWindow(id) {
   if (welcome) welcome.style.display = 'flex';
 }
 
+
+
 // Acquire control when trying to open the control window
-async function openControl() {
+async function openControl()
+{
   if (!currentUser) {
     alert('Trebuie să te loghezi!');
     return;
@@ -104,7 +119,10 @@ async function openControl() {
   }
 }
 
-async function releaseControl() {
+
+
+async function releaseControl()
+{
   if (!currentUser) return;
   if (activeUser !== currentUser) return;
 
@@ -116,17 +134,21 @@ async function releaseControl() {
       keepalive: true
     });
   } catch {
-    // best-effort
+    //
   } finally {
     activeUser = null;
     updateControlButton();
   }
 }
 
-// Servo command
-async function sendServoCommand(val) {
+
+
+// Trimite unghiul la backend
+async function sendServoCommand(val)
+{
   const angle = parseInt(val, 10);
   const angleLabel = $('angle-val');
+
   if (angleLabel) angleLabel.innerText = String(angle);
 
   try {
@@ -145,8 +167,11 @@ async function sendServoCommand(val) {
   }
 }
 
+
+
 // Poll status (updates connection + activeUser)
-async function updateStatus() {
+async function updateStatus()
+{
   try {
     const res = await fetch('/api/status');
     const state = await res.json();
@@ -159,8 +184,11 @@ async function updateStatus() {
   }
 }
 
-// Auth UI
-function updateAuthUI() {
+
+
+// Update UI autentificare
+function updateAuthUI()
+{
   const authStatus = $('auth-status');
 
   const loginBtn = $('login-btn');
@@ -196,11 +224,15 @@ function updateAuthUI() {
   updateControlButton();
 }
 
-async function handleAuth(type) {
+
+
+// Tratare autentificari
+async function handleAuth(type)
+{
   const username = $('auth-username')?.value?.trim() ?? '';
   const password = $('auth-pass')?.value ?? '';
 
-  // Clicking Login while already logged in => logout
+
   if (type === 'login' && currentUser) {
     await handleLogoff();
     return;
@@ -242,7 +274,10 @@ async function handleAuth(type) {
   }
 }
 
-async function handleLogoff() {
+
+
+async function handleLogoff()
+{
   // If user had control, release it.
   await releaseControl();
 
@@ -254,15 +289,50 @@ async function handleLogoff() {
   await closeWindow('login-window');
 }
 
-// Release control if the tab is closed while controlling
+
+
+// Eliberare control la ichiderea ferestrei
 window.addEventListener('beforeunload', () => {
   if (currentUser && activeUser === currentUser) {
-    // best effort; keepalive above helps
     navigator.sendBeacon?.('/api/control/release', new Blob([
       JSON.stringify({ username: currentUser })
     ], { type: 'application/json' }));
   }
 });
+
+
+
+async function takeShot()
+{
+  try {
+    const res = await fetch('/api/command/shot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser })
+    });
+    
+    if (res.ok) {
+        alert("Comandă trimisă! Așteaptă procesarea...");
+        // Pornim un mic delay apoi reîmprospătăm imaginea
+        setTimeout(refreshImage, 2000); 
+    }
+  } catch (e) { console.error(e); }
+}
+
+
+
+function refreshImage()
+{
+    const img = $('last-shot');
+    const placeholder = $('no-signal');
+    
+    // Adăugăm un timestamp la URL pentru a evita cache-ul browserului
+    img.src = '/api/camera/last?t=' + Date.now();
+    img.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+}
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
   updateClock();

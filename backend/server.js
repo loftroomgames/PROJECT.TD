@@ -3,101 +3,133 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
-
-
 const app = express();
-const USERS_FILE = path.join(__dirname, 'users.json');
 
-// ESP online detection
+const DATA_FILE = path.join(__dirname, 'backend_data/data.json');
+
+
+// Detectie ESP OFFLINE
 const espCheckTime = 5000; // [ms]
 
 app.use(cors());
 app.use(express.json());
 
+
 // System state
 const systemState = {
   servoAngle: 90,
-  activeUser: null,      // user currently in control
-  lastCheckIn: 0         // updated when ESP polls
+  servoDelay: 150,
+  activeUser: null,
+  lastCheckIn: 0,
+  useFlash: false,
+  liveImage: false,
+  espCommand: "none",
+  espDebugCommand: "none",
+  lastImage: null
 };
 
-function readUsers() {
-  if (!fs.existsSync(USERS_FILE)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-  } catch {
-    return [];
+
+
+function loadData()
+{
+  if (!fs.existsSync(DATA_FILE)) {
+    return { users: [], espData: { servoDelay: 150, userFlash: false } }; 
+    }
+
+    try {
+
+      const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      if(!data.users){ data.users = []; }
+      return data;
+
+    } catch (err) {
+        return { users: [], espData: {} };
   }
 }
 
-function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+
+
+function saveData(data)
+{
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-function isBlank(v) {
+
+
+function isBlank(v)
+{
   return !v || typeof v !== 'string' || !v.trim();
 }
 
-// ========================= API ROUTES =========================
 
-// Register
+
+// RUTE API ===========================================================================
+// Inregistrare Utilizator
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (isBlank(username) || isBlank(password)) {
     return res.status(400).json({ success: false, error: 'Câmp gol sau invalid!' });
   }
 
-  const users = readUsers();
-  if (users.find(u => u.username === username)) {
+  const data = loadData();
+
+  if (data.users.find(u => u.username === username)) {
     return res.status(400).json({ success: false, error: 'Nume Utilizator Existent!' });
   }
 
-  users.push({ username: username.trim(), password: password.trim() });
-  writeUsers(users);
+  data.users.push({ username: username.trim(), password: password.trim() });
+  saveData(data);
+
+  console.log(`Utilizator inregistrat: ${username}`);
   res.json({ success: true });
 });
 
-// Login
+
+
+// Autentificare Utilizator
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (isBlank(username) || isBlank(password)) {
     return res.status(400).json({ success: false, error: 'Câmp gol sau invalid!' });
   }
 
-  const users = readUsers();
-  const user = users.find(u => u.username === username && u.password === password);
+  const data = loadData();
+  const user = data.users.find(u => u.username === username && u.password === password);
   if (!user) {
     return res.status(401).json({ success: false, error: 'Nume Utilizator sau Parolă invalidă!' });
   }
-
+  
+  console.log(`${username} autentificat!`);
   res.json({ success: true, username: user.username });
 });
 
-// Delete account
+
+
+// Sterge Cont Utilizator
 app.post('/api/delete', (req, res) => {
   const { username, password } = req.body;
   if (isBlank(username) || isBlank(password)) {
     return res.status(400).json({ success: false, error: 'Câmp gol sau invalid!' });
   }
 
-  const users = readUsers();
-  const idx = users.findIndex(u => u.username === username && u.password === password);
+  const data = loadData();
+  const idx = data.users.findIndex(u => u.username === username && u.password === password);
   if (idx === -1) {
     return res.status(401).json({ success: false, error: 'Utilizator inexistent sau parolă greșită!' });
   }
 
-  users.splice(idx, 1);
-  writeUsers(users);
+  data.users.splice(idx, 1);
+  saveData(data);
 
-  // If the deleted user had control, release it.
-  if (systemState.activeUser === username) systemState.activeUser = null;
+  if (systemState.activeUser === username) systemState.activeUser = null;  // elibereaza daca acesta a fost activ;
 
+  console.log(`Utilizator sters: ${username}`);
   res.json({ success: true, message: 'Cont șters cu succes!' });
 });
 
 
 
-// Acquire control when opening the control window
+// Cerere control asupra camerei
 app.post('/api/control/acquire', (req, res) => {
   const { username } = req.body;
   if (isBlank(username)) {
@@ -113,10 +145,14 @@ app.post('/api/control/acquire', (req, res) => {
   }
 
   systemState.activeUser = username;
+  
+  console.log(`${username} a primit controlul`);
   res.json({ success: true, activeUser: systemState.activeUser });
 });
 
-// Release control when leaving the control window
+
+
+// Eliberare control la părăsirea ferestrei
 app.post('/api/control/release', (req, res) => {
   const { username } = req.body;
   if (isBlank(username)) {
@@ -128,12 +164,17 @@ app.post('/api/control/release', (req, res) => {
   }
 
   systemState.activeUser = null;
+
+  console.log(`Utilizatorul ${username} a fost elibarat de la control!`);
   res.json({ success: true });
 });
 
+
+
 // Frontend polls status
 app.get('/api/status', (req, res) => {
-  const isOnline = (Date.now() - systemState.lastCheckIn) < espCheckTime;
+  const isOnline = (Date.now() - systemState.lastCheckIn) < espCheckTime;  // verificare comunicare ESP
+
   res.json({
     servoAngle: systemState.servoAngle,
     activeUser: systemState.activeUser,
@@ -141,9 +182,12 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// Frontend sends servo angle (only activeUser)
+
+
+// Primire unghi servo de la frontend
 app.post('/api/command', (req, res) => {
   const { username, angle } = req.body;
+
   if (systemState.activeUser !== username) {
     return res.status(403).json({ success: false, error: 'Nu ai controlul acum!' });
   }
@@ -157,13 +201,50 @@ app.post('/api/command', (req, res) => {
   res.json({ success: true });
 });
 
-// ESP32 polls for the current angle (also updates lastCheckIn)
+
+
+// ESP citeste ultimul unghi scris + update lastCheck in
 app.get('/api/esp/angle', (req, res) => {
   systemState.lastCheckIn = Date.now();
-  res.json({ angle: systemState.servoAngle });
+  
+  res.json({ 
+    angle: systemState.servoAngle,
+    command: systemState.espCommand 
+  });
 });
 
-// Static frontend
+
+
+// Rută nouă: Comandă de Shot de la Frontend
+app.post('/api/command/shot', (req, res) => {
+  if (systemState.activeUser !== req.body.username) {
+    return res.status(403).json({ success: false, error: 'Nu ai controlul!' });
+  }
+  systemState.espCommand = "capture"; // Setăm flag-ul pentru ESP32
+  res.json({ success: true });
+});
+
+
+
+// Rută nouă: ESP32 trimite imaginea (Binary POST)
+app.post('/api/esp/upload', express.raw({ type: 'image/jpeg', limit: '100kb' }), (req, res) => {
+  systemState.lastImage = req.body; // Salvăm buffer-ul imaginii
+  systemState.espCommand = "none";  // Resetăm comanda
+  console.log("Imagine primită de la ESP32");
+  res.send("OK");
+});
+
+
+
+// Rută nouă: Frontend-ul cere ultima imagine
+app.get('/api/camera/last', (req, res) => {
+  if (!systemState.lastImage) return res.status(404).send("No image");
+  res.set('Content-Type', 'image/jpeg');
+  res.send(systemState.lastImage);
+});
+
+
+
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const PORT = process.env.PORT || 3000;

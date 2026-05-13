@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "username": "Administrator",
+      "password": "admin123"
+    }
+  ],
+  "espData": {
+    "servoDelay": 150,
+    "userFlash": false
+  }
+}

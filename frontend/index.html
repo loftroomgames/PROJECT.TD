@@ -6,144 +6,114 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32 Camera-Control</title>
     <link rel="stylesheet" href="styles.css">
-
     <script src="scripts.js" defer></script>
 </head>
 
 <body>
 
-	<div class="taskbar-top">
-	  <div class="header-content">
-
-		<div class="header-left">
-		  <span id="auth-status">Login</span></div>
-
-		<div id="clock" class="system-tray">00:00:00</div>
-
-	  </div>
-	</div>
-
-
+    <div class="taskbar-top">
+        <div class="header-content">
+            <div class="header-left">
+                <span id="auth-status">Login</span>
+            </div>
+            <div id="clock" class="system-tray">00:00:00</div>
+        </div>
+    </div>
 
     <div class="desktop">
 
         <div id="welcome-window" class="window">
-
             <div class="window-title">
                 <span>ESP32 Camera-Control [v1.5]</span>
             </div>
 
             <div class="window-body">
-			
                 <div class="welcome-message" style="text-align: center">
                     <p>Bun venit în Centrul de Control!</p>
                 </div>
-                
+
                 <div class="buttons-container">
                     <button class="control-button" id="main-control-btn" onclick="openControl()">🕹️ Control</button>
                     <button class="control-button" onclick="openWindow('login-window')">🔑 Autentificare</button>
                 </div>
-				
             </div>
 
-
             <div class="status-bar">
-			
                 <div class="status-field" id="esp-status">
                     Status ESP: <span id="status-text">DECONECTAT</span>
                     <div id="connection-led" class="indicator-red"></div>
                 </div>
-				
             </div>
         </div>
 
 
 
         <div id="login-window" class="window" style="display: none;">
-		
             <div class="window-title">
                 <span>Autentificare</span>
                 <button class="win-btn" onclick="closeWindow('login-window')">X</button>
             </div>
-			
+
             <div class="window-body">
+                <div class="input-row">
+                    <span class="input-icon">👤</span>
+                    <input type="text" id="auth-username" placeholder="Nume Utilizator" class="win-input" style="margin-bottom: 16px">
+                </div>
 
-				<div class="input-row">
-				  <span class="input-icon">👤</span>
-				  <input type="text" id="auth-username" placeholder="Nume Utilizator" class="win-input" style="margin-bottom: 16px">
-				</div>
-
-				<div class="input-row">
-				  <span class="input-icon">🔑</span>
-				  <input type="password" id="auth-pass" placeholder="Parolă" class="win-input" style="margin-bottom: 16px">
-				</div>
+                <div class="input-row">
+                    <span class="input-icon">🔑</span>
+                    <input type="password" id="auth-pass" placeholder="Parolă" class="win-input" style="margin-bottom: 16px">
+                </div>
 
                 <div class="buttons-container">
                     <button id="login-btn" onclick="handleAuth('login')" class="control-button small">Login</button>
                     <button id="reg-account-btn" onclick="handleAuth('register')" class="control-button small">Înregistreză</button>
-                    <button id="del-account-btn" onclick="handleAuth('delete')" 
-					class="control-button small" style="margin-top: 48px; background-color: #770000;">Șterge cont</button>					
+                    <button id="del-account-btn" onclick="handleAuth('delete')" class="control-button small" style="margin-top: 48px; background-color: #770000;">Șterge cont</button>
                 </div>
             </div>
-			
         </div>
 
 
 
         <div id="camera-window" class="window" style="display: none">
-		
             <div class="window-title">
                 <span>Control Panel</span>
                 <button class="win-btn" onclick="closeWindow('camera-window')">X</button>
             </div>
-			
-			<div class="window-body">
 
-				<div class="camera-layout">
+            <div class="window-body">
+                <div class="camera-layout">
+                    
+                    <div class="image-zone" id="camera-feed">
+                        <img id="last-shot" src="" alt="Așteptare semnal..." style="width:100%; height:100%; object-fit:contain; display:none;">
+                        <div id="no-signal" class="image-placeholder">📶 NO SIGNAL</div>
+                    </div>
 
+                    <div class="controls-zone">
+                        <label class="control-label"><span id="angle-val">90</span>⁰</label>
+                        <input type="range" min="0" max="180" value="90" class="angle-slider" oninput="sendServoCommand(this.value)">
 
-				  <div class="image-zone">
-					<div class="image-placeholder">📶 NO SIGNAL</div>
-				  </div>
+                        <div class="button-row">
+                            <button class="control-button small" onclick="takeShot()">📷 Shot</button>
+                            <button class="control-button small">📡 Scan360</button>
+                        </div>
 
+                        <div class="toggle">
+                            <input type="checkbox" id="liveToggle">
+                            <label for="liveToggle">🔴 Imagine Live</label>
+                        </div>
 
-				  <div class="controls-zone">
+                        <div class="toggle">
+                            <input type="checkbox" id="flashToggle">
+                            <label for="flashToggle">🔦 Flash</label>
+                        </div>
+                    </div>
 
-					<label class="control-label"><span id="angle-val">90</span>⁰</label>
-					<input
-					  type="range"
-					  min="0"
-					  max="180"
-					  value="90"
-					  class="angle-slider"
-					  oninput="sendServoCommand(this.value)"
-					>
-
-					<div class="button-row">
-					  <button class="control-button small">📷 Shot</button>
-					  <button class="control-button small">📡 Scan360 </button>
-					</div>
-
-					<div class="toggle">
-					  <input type="checkbox" id="liveToggle">
-					  <label for="liveToggle">🔴 Imagine Live</label>
-					</div>
-
-					<div class="toggle">
-					  <input type="checkbox" id="flashToggle">
-					  <label for="flashToggle">🔦 Flash</label>
-					</div>
-
-				  </div>
-
-				</div>
-				
-			</div>
-			
+                </div>
+            </div>
         </div>
 
-
-
     </div>
+
 </body>
 </html>

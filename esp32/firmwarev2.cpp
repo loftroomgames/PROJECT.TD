@@ -26,8 +26,8 @@
 
 // ====================== WIFI ======================
 
-const char* ssid = "Pajti Network 2.4Ghz";
-const char* password = "321qWe123";
+const char* ssid = "";
+const char* password = "";
 
 const char* serverUrl = "http://192.168.0.62:3000";
 

@@ -185,7 +185,7 @@ body {
 .indicator-red { background: #ff0000; }
 .indicator-green { background: #00ff00; }
 
-/* Camera window layout */
+
 .camera-layout {
   display: flex;
   gap: 24px;
@@ -227,7 +227,7 @@ body {
   font-size: 12px;
 }
 
-/* Configurații noi pentru zona LCD și Monitorizare */
+
 .lcd-zone {
   width: 350px;
   display: flex;

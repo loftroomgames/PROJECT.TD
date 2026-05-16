@@ -16,6 +16,18 @@ app.use(express.json());
 function isBlank(v) { return !v || typeof v !== 'string' || !v.trim(); }
 
 
+
+// Culori ANSI pt. loguri Server
+const logColors = {
+  reset: "\x1b[0m",
+  red: "\x1b[38;2;255;85;85m",     // Un roșu aprins stil consolă
+  cream: "\x1b[38;2;245;245;220m", // Nuanță de crem/bej (RGB: 245, 245, 220)
+  green: "\x1b[38;2;85;255;85m",   // Verde deschis pentru succes
+  cyan: "\x1b[36m"                 // Albastru deschis pentru info/sistem
+};
+
+
+
 // Statusuri System
 const systemState = {
   lastCheckIn: 0,
@@ -23,6 +35,7 @@ const systemState = {
   temperature: 0,
   humidity: 0,
   fanStatus: false,
+  fanSpeed: 50,
   texts: [" - ", " - ", " - "],
   activeUser: null
 };
@@ -70,7 +83,7 @@ app.post('/api/register', (req, res) => {
   data.users.push({ username: username.trim(), password: password.trim(), isAdmin: false });
   saveData(data);
 
-  console.log(`Utilizator înregistrat cu SUCCES: ${username}`);
+  console.log(`${logColors.cyan}[AUTH]:${logColors.reset} ${username} ${logColors.cyan}înregistrat cu SUCCES!${logColors.reset}`);
   res.json({ success: true });
 });
 
@@ -90,7 +103,7 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ success: false, error: 'Nume Utilizator sau Parolă invalidă!' });
   }
 
-  console.log(`${username} autentificat cu SUCCES!`);
+  console.log(`${logColors.cyan}[AUTH]:${logColors.reset} ${username} ${logColors.cyan}logat cu SUCCES!${logColors.reset}`);
   res.json({ success: true, username: user.username });
 });
 
@@ -114,7 +127,7 @@ app.post('/api/delete', (req, res) => {
   saveData(data);
   if (systemState.activeUser === username) systemState.activeUser = null;
 
-  console.log(`Utilizator șters cu SUCCES: ${username}`);
+  console.log(`${logColors.red}[DEL]:${logColors.reset} ${username} ${logColors.cyan}șters cu SUCCES!${logColors.reset}`);
   res.json({ success: true, message: 'Cont șters cu succes!' });
 });
 
@@ -122,8 +135,7 @@ app.post('/api/delete', (req, res) => {
 
 // Verificare ADMIN
 app.post('/api/admincheck', (req, res) => {
-  console.log('Checking ADMIN ... ');
-  
+
   const { username } = req.body;
   if (isBlank(username)) {
     return res.status(400).json({ success: false, error: 'Câmp gol sau invalid!' });
@@ -153,7 +165,7 @@ app.post('/api/control/acquire', (req, res) => {
 
   systemState.activeUser = username;
 
-  console.log(`${username} a primit controlul`);
+  console.log(`${logColors.cream}[CONTROL]:${logColors.reset} ${username} ${logColors.cream}a primit controlul!${logColors.reset}`);
   res.json({ success: true, activeUser: systemState.activeUser });
 });
 
@@ -172,7 +184,7 @@ app.post('/api/control/release', (req, res) => {
 
   systemState.activeUser = null;
 
-  console.log(`Utilizatorul ${username} a fost eliberat de la control!`);
+  console.log(`${logColors.cream}[CONTROL]:${logColors.reset} ${username} ${logColors.cream}a pierdut controlul!${logColors.reset}`);
   res.json({ success: true });
 });
 
@@ -188,6 +200,7 @@ app.get('/api/status', (req, res) => {
     temperature: systemState.temperature,
     humidity: systemState.humidity,
     fanStatus: systemState.fanStatus,
+    fanSpeed: systemState.fanSpeed,
     texts: systemState.texts
   });
 });
@@ -223,6 +236,21 @@ app.post('/api/command/fan', (req, res) => {
 
 
 
+app.post('/api/command/fan/speed', (req, res) => {
+  const { username, speed } = req.body;
+  if (systemState.activeUser !== username) {
+    return res.status(403).json({ success: false, error: 'Nu ai controlul acum!' });
+  }
+  const s = Number(speed);
+  if (!Number.isFinite(s) || s < 0 || s > 100) {
+    return res.status(400).json({ success: false, error: 'Viteză invalidă (0..100)!' });
+  }
+  systemState.fanSpeed = Math.round(s);
+  res.json({ success: true });
+});
+
+
+
 // Comandă actualizare linii text LCD 2004
 app.post('/api/command/lcd', (req, res) => {
   const { username, texts } = req.body;
@@ -234,7 +262,7 @@ app.post('/api/command/lcd', (req, res) => {
     return res.status(400).json({ success: false, error: 'Date text invalide!' });
   }
 
-  systemState.texts = texts.map(t => String(t).substring(0, 17));
+  systemState.texts = texts.map(t => String(t).substring(0, 20));
   res.json({ success: true });
 });
 
@@ -251,6 +279,7 @@ app.post('/api/esp/sync', (req, res) => {
   res.json({ 
     angle: systemState.servoAngle,
     fanStatus: systemState.fanStatus,
+    fanSpeed: systemState.fanSpeed,
     texts: systemState.texts
   });
 });
@@ -259,4 +288,9 @@ app.post('/api/esp/sync', (req, res) => {
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server pornit pe portul ${PORT}!`));
+
+app.listen(PORT, () => {
+  console.log(`${logColors.green}=======================================`);
+  console.log(`[SYSTEM]: Server pornit pe portul: ${logColors.cyan}${PORT}${logColors.reset}`);
+  console.log(`${logColors.green}=======================================${logColors.reset}`);
+});

@@ -9,6 +9,11 @@
       "username": "Attila",
       "password": "123",
       "isAdmin": false
+    },
+    {
+      "username": "Attila2",
+      "password": "123",
+      "isAdmin": false
     }
   ],
   "espData": {

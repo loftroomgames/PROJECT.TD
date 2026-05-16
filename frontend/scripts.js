@@ -180,7 +180,6 @@ async function updateLcdText()
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      alert('Texte trimise cu succes spre actualizare LCD!');
     } else {
       alert(data.error || 'Eroare la actualizarea textului.');
     }
@@ -189,7 +188,7 @@ async function updateLcdText()
 
 
 
-// Achizitie statu & actualizare grafic
+// Achizitie status & actualizare grafic
 async function updateStatus()
 {
   try {
@@ -202,9 +201,23 @@ async function updateStatus()
     if (state.isConnected) {
       if ($('val-temp')) $('val-temp').innerText = state.temperature;
       if ($('val-hum')) $('val-hum').innerText = state.humidity;
+
       if ($('fanToggle') && document.activeElement !== $('fanToggle')) {
         $('fanToggle').checked = state.fanStatus;
       }
+
+      if ($('fanSpeedSlider') && document.activeElement !== $('fanSpeedSlider')) {
+        $('fanSpeedSlider').value = state.fanSpeed;
+        if ($('fan-speed-val')) $('fan-speed-val').innerText = state.fanSpeed;
+      }
+
+    if ($('fanLabel')) {
+      if (state.fanSpeed >= 90 && !state.fanStatus) {
+        $('fanLabel').innerText = "⚠️ Pornire Ventilator [Risc suprasolicitare sistem!]";
+      } else {
+        $('fanLabel').innerText = "🍃 Pornire Ventilator"; 
+      }
+    }
       
       pushTelemetryData(state.temperature, state.humidity);
       drawLiveChart();
@@ -219,21 +232,16 @@ async function updateStatus()
 
 function pushTelemetryData(temp, hum)
 {
-  // Evităm duplicarea timestamp-urilor identice dacă serverul returnează static rapid
-  if (dateDHT11.length > 0) {
-    let last = dateDHT11[dateDHT11.length - 1];
-    if (last.temp === temp && last.hum === hum && dateDHT11.length >= 10) {
-      return; 
-    }
-  }
   dateDHT11.push({ temp, hum });
-  if (dateDHT11.length > 10) {
+
+  if (dateDHT11.length > 64) {
     dateDHT11.shift(); 
   }
 }
 
 
 
+// Animare GRAFIC Temp./Humi.
 // Animare GRAFIC Temp./Humi.
 function drawLiveChart()
 {
@@ -264,43 +272,46 @@ function drawLiveChart()
     return;
   }
 
-  const stepX = w / 9;
+  const stepX = w / (dateDHT11.length - 1 || 1);
 
-  // Scalare date pe axa Y (0 - 100)
-  function getY(val) {
-    return h - 15 - ((val / 100) * (h - 30));
+  // MODIFICARE: Aceeași funcție, dar acum calculează dinamic procentul pe scări personalizate
+  function getY(val, min, max) {
+    // Constrângem valoarea să nu iasă fizic din marginile canvas-ului
+    let v = Math.max(min, Math.min(max, val));
+    let procent = (v - min) / (max - min);
+    return h - 15 - (procent * (h - 30));
   }
 
-  // Linie TEMPERATURA
+  // Linie TEMPERATURA (Zoom între 15 și 40)
   ctx.strokeStyle = '#ff0000';
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (let i = 0; i < dateDHT11.length; i++) {
     let x = i * stepX;
-    let y = getY(dateDHT11[i].temp);
+    let y = getY(dateDHT11[i].temp, 15, 40); // <-- Pasăm min: 15, max: 40
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
-  // Linie UMIDITATE
+  // Linie UMIDITATE (Zoom între 20 și 85)
   ctx.strokeStyle = '#00ff00';
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (let i = 0; i < dateDHT11.length; i++) {
     let x = i * stepX;
-    let y = getY(dateDHT11[i].hum);
+    let y = getY(dateDHT11[i].hum, 20, 85); // <-- Pasăm min: 20, max: 85
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
-  // Legendă afișată pe grafic
+  // Legendă afișată pe grafic (actualizată cu noile praguri ca să arate profi)
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(5, 5, 230, 25);
+  ctx.fillRect(5, 5, 260, 25);
   ctx.font = '11px "Cascadia Code", Arial';
   ctx.fillStyle = '#ff0000';
-  ctx.fillText("■ Temp (°C)", 10, 22);
+  ctx.fillText("■ Temp (15-40°C)", 10, 22);
   ctx.fillStyle = '#00ff00';
-  ctx.fillText("■ Umiditate (%)", 120, 22);
+  ctx.fillText("■ Umiditate (20-85%)", 130, 22);
 }
 
 
@@ -371,6 +382,7 @@ async function handleAuth(type)
 }
 
 
+
 async function isAdmin(username)
 {
   const res = await fetch(`/api/admincheck`, {
@@ -384,6 +396,27 @@ async function isAdmin(username)
 
   return result.isAdmin;
 }
+
+
+
+async function sendFanSpeedCommand(val)
+{
+  const speed = parseInt(val, 10);
+  const speedLabel = $('fan-speed-val');
+
+  if (speedLabel) { speedLabel.innerText = String(speed); }
+
+  try {
+    const res = await fetch('/api/command/fan/speed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, speed })
+    });
+    const data = await res.json();
+    if (!res.ok) alert(data.error || 'Comandă viteză respinsă.');
+  } catch (e) { console.error(e); }
+}
+
 
 
 async function handleLogoff()
@@ -413,5 +446,5 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAuthUI();
   updateStatus();
   setInterval(updateClock, 1000);
-  setInterval(updateStatus, 1000);
+  setInterval(updateStatus, 300);
 });

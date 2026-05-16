@@ -85,7 +85,7 @@
                         <input type="text" id="lcd-line-1" placeholder="Linia 2 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
                         <input type="text" id="lcd-line-2" placeholder="Linia 3 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
                         <input type="text" id="lcd-line-3" placeholder="Linia 4 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
-                        <button class="control-button small" style="width: 100%; margin-top: 10px;" onclick="updateLcdText()">Updatează LCD</button>
+                        <button class="control-button small" style="width: 100%; margin-top: 10px;" onclick="updateLcdText()">⏏️ Upload</button>
                     </div>
 
                     <div class="controls-zone">
@@ -99,7 +99,12 @@
 
                         <div class="toggle" style="margin-top: 15px;">
                             <input type="checkbox" id="fanToggle" onchange="sendFanCommand(this.checked)">
-                            <label for="fanToggle">💨 Pornire Ventilator </label>
+                            <label for="fanToggle" id="fanLabel">🍃 Pornire Ventilator</label>
+                        </div>
+
+                        <div style="margin-top: 10px;">
+                            <label class="control-label">Viteză Ventilator: <span id="fan-speed-val">50</span>%</label>
+                            <input type="range" min="0" max="100" value="50" class="angle-slider" id="fanSpeedSlider" oninput="sendFanSpeedCommand(this.value)">
                         </div>
                     </div>
 

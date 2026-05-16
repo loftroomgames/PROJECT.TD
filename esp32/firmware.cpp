@@ -6,30 +6,36 @@
 #include <ESP32Servo.h>
 #include <ArduinoJson.h>
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+#include <LCD-I2C.h>
 #include <DHT.h>
 
 
 // CONFIGURARE PINI ====================================================
-const int servoPin = 13;       // COMANDA SERVO
-const int fanPin = 12;         // COMANDA VENTILATOR
-const int buzzerPin = 15;      // COMANDA BUZZER
-const int dhtPin = 27;         // DATE SENSOR DHT11     !! VCC = 3.3V !!
+const int servoPin = 19;       // COMANDA SERVO
+const int fanPin = 17;         // COMANDA VENTILATOR
+const int buzzerPin = 16;      // COMANDA BUZZER
+const int dhtPin = 5;          // DATE SENSOR DHT11     !! VCC = 3.3V !!
+#define DHTTYPE DHT11
 
-const int ledWifiBlue = 2;   
+
+const int ledWifiBlue = 2;
 const int ledServerGreen = 4;
 
 // I2C pt. LCD 2004  !! VCC = 5V !!
 const int SDA_PIN = 23;
 const int SCL_PIN = 22;
 
-#define DHTTYPE DHT11
+
+bool WIFI_OK = false;
+bool SERVER_OK = false;
 
 
 // INITIALIZARE COMPONENTE ===========================================================
 Servo myServo;
+int currentServoAngle = 90;
+
 DHT dht(dhtPin, DHTTYPE);
-LiquidCrystal_I2C lcd(0x27, 20, 4); // Adresa standard I2C pentru ecrane LCD 2004
+LCD_I2C lcd(0x27, 20, 4);
 
 
 // CONFIGURARE REȚEA & SERVER ========================================================
@@ -55,29 +61,49 @@ void setup()
 	digitalWrite(fanPin, LOW);
 	digitalWrite(buzzerPin, LOW);
 
-	// START I2C
-	Wire.begin(SDA_PIN, SCL_PIN);
-	lcd.init();
-	lcd.backlight();
-	lcd.setCursor(0, 0);
-	lcd.print("PROJECT TD");
 
+	// Initializare LCD 2004
+  Wire.begin(SDA_PIN, SCL_PIN);
+  lcd.begin(&Wire);
+  lcd.backlight();
+  lcd.display();
+  lcd.clear();
+  systemPrint("Booting ...");
+  delay(8000);
+
+  // Initializare Sensore Temp./Umid.
+  systemPrint("Init. DHT11");
+  delay(1500);
 	dht.begin();
-	myServo.attach(servoPin);
-	myServo.write(90);
 
-	Serial.print("Conectare WiFi ...");
+  // Initializare Servo
+  systemPrint("Init. Servo");
+  delay(1500);
+	myServo.attach(servoPin);
+	myServo.write(currentServoAngle);
+
+
+  // Initializare Wi-Fi
+  systemPrint("Init. Wi-Fi");
+  delay(1500);
 	WiFi.begin(ssid, password);
 }
 
 void loop()
 {
 	// Verificare status WiFi:
-	if (WiFi.status() == WL_CONNECTED) {
-		wifiLedFeedback("ok");
+  if (WiFi.status() == WL_CONNECTED) {
+
+    wifiLedFeedback("ok");
+    if(!WIFI_OK) { WIFI_OK = true; beep(1); }
+
 	} else {
+
+    if(WIFI_OK) { WIFI_OK = false; }
+    systemPrint("Searching ...");
 		wifiLedFeedback("search");
 		return;
+
 	}
 
 	// Citire date DHT11
@@ -86,14 +112,14 @@ void loop()
 
 	if (isnan(h) || isnan(t))
 	{
-		Serial.println("Eroare la citirea de pe senzorul DHT11!");
+		systemPrint("Err: DHT11");
 		t = 0;
 		h = 0;
 	}
 
 
 	lcd.setCursor(0, 0);
-	lcd.printf("T:%2.0fc H:%2.0f%%  Servo:%3d", t, h, myServo.read());
+	lcd.printf("T:%2.0fc H:%2.0f%%  S:%3d", t, h, currentServoAngle);
 
 	// Trimitere date și preluare comenzi de pe Server prin HTTP POST JSON
 	HTTPClient http;
@@ -102,8 +128,8 @@ void loop()
 
 	// Construim obiectul JSON trimis la Server
 	StaticJsonDocument<200> outboundDoc;
-	outboundDoc["temperature"] = Math.round(t);
-	outboundDoc["humidity"] = Math.round(h);
+	outboundDoc["temperature"] = t;
+	outboundDoc["humidity"] = h;
 	String requestPayload;
 	serializeJson(outboundDoc, requestPayload);
 
@@ -111,6 +137,10 @@ void loop()
 
 	if (httpCode == 200)
 	{
+    if(!SERVER_OK) {
+      SERVER_OK = true;
+      beep(2);
+    }
 		digitalWrite(ledServerGreen, HIGH);
 
 		String inboundPayload = http.getString();
@@ -119,18 +149,33 @@ void loop()
 		
 		// UPDATE SERVO
 		int targetAngle = inboundDoc["angle"];
-		myServo.write(targetAngle);
+    if(targetAngle != currentServoAngle)
+    {
+      rotateToAngle(targetAngle);
+    }
 
 		// UPDATE FAN
 		bool fanStatus = inboundDoc["fanStatus"];
-		digitalWrite(fanPin, fanStatus ? HIGH : LOW);
+    int fanSpeed = inboundDoc["fanSpeed"];
+
+    if (fanStatus) 
+    {
+      int dutyCycle = map(fanSpeed, 0, 100, 0, 255);
+      analogWrite(fanPin, dutyCycle);
+    } 
+    else 
+    {
+      analogWrite(fanPin, 0);
+    }
 
 		// UPDATE LCD
 		JsonArray texts = inboundDoc["texts"];
 		bool textChanged = false;
 
-		if (!texts.isNull() && texts.size() == 3) {
-			for (int i=0; i<3; i++) {
+		if (!texts.isNull() && texts.size() == 3)
+    {
+			for (int i=0; i<3; i++)
+      {
 				String currentLineText = texts[i].as<String>();
 				
 				// Modificare doar daca sa schimat linia
@@ -148,15 +193,19 @@ void loop()
 			}
 		}
 
-		if (textChanged) { beep(); }
+		if (textChanged) { beep(1); }
 
 	} else {
+    if(SERVER_OK) {
+      SERVER_OK = false;
+    }
 		digitalWrite(ledServerGreen, LOW);
-		Serial.printf("Eroare Comunicație Server: %d\n", httpCode);
+    String s = String("Server:") + httpCode;
+    systemPrint(s);
 	}
 
 	http.end();
-	delay(1000);
+	delay(500);
 }
 
 
@@ -177,9 +226,44 @@ void wifiLedFeedback(const char* mode)
 
 
 
-void beep()
+void beep(int count)
 {
-	digitalWrite(buzzerPin, HIGH);
-	delay(150);
-	digitalWrite(buzzerPin, LOW);
+  for(int i=0; i<count; i++)
+  {
+    digitalWrite(buzzerPin, HIGH);
+    delay(250);
+    digitalWrite(buzzerPin, LOW);
+  }
+}
+
+
+
+void systemPrint(String text)
+{
+  lcd.home();
+  lcd.print("                    ");
+  lcd.home();
+  lcd.print("[i]: ");
+  lcd.print(text);
+}
+
+
+
+void rotateToAngle(int targetAngle)
+{
+  if (currentServoAngle == targetAngle) return;
+
+  int step = (targetAngle > currentServoAngle) ? 1 : -1;
+
+  systemPrint("Pozitionare ...");
+  
+  while (currentServoAngle != targetAngle)
+  {
+    currentServoAngle += step;
+    myServo.write(currentServoAngle);
+    delay(15);
+  }
+  
+  lcd.home();
+  lcd.print("                    ");
 }

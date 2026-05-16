@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Camera-Control</title>
+    <title>ESP32 Central Control [v2.5]</title>
     <link rel="stylesheet" href="styles.css">
     <script src="scripts.js" defer></script>
 </head>
@@ -24,16 +24,16 @@
 
         <div id="welcome-window" class="window">
             <div class="window-title">
-                <span>ESP32 Camera-Control [v1.5]</span>
+                <span>ESP32 Device Control [v2.0]</span>
             </div>
 
             <div class="window-body">
                 <div class="welcome-message" style="text-align: center">
-                    <p>Bun venit în Centrul de Control!</p>
+                    <p>Bun venit în Centrul de Control</p>
                 </div>
 
                 <div class="buttons-container">
-                    <button class="control-button" id="main-control-btn" onclick="openControl()">🕹️ Control</button>
+                    <button class="control-button" id="main-control-btn" onclick="openControl()">🕹️ Control Panel</button>
                     <button class="control-button" onclick="openWindow('login-window')">🔑 Autentificare</button>
                 </div>
             </div>
@@ -45,8 +45,6 @@
                 </div>
             </div>
         </div>
-
-
 
         <div id="login-window" class="window" style="display: none;">
             <div class="window-title">
@@ -73,42 +71,43 @@
             </div>
         </div>
 
-
-
-        <div id="camera-window" class="window" style="display: none">
+        <div id="control-window" class="window" style="display: none; height: auto; width: 850px;">
             <div class="window-title">
-                <span>Control Panel</span>
-                <button class="win-btn" onclick="closeWindow('camera-window')">X</button>
+                <span>Panou Control Actuatoare & Monitorizare DHT11</span>
+                <button class="win-btn" onclick="closeWindow('control-window')">X</button>
             </div>
 
             <div class="window-body">
                 <div class="camera-layout">
                     
-                    <div class="image-zone" id="camera-feed">
-                        <img id="last-shot" src="" alt="Așteptare semnal..." style="width:100%; height:100%; object-fit:contain; display:none;">
-                        <div id="no-signal" class="image-placeholder">📶 NO SIGNAL</div>
+                    <div class="lcd-zone">
+                        <div class="lcd-header">✍ Text Ecran LCD 2004</div>
+                        <input type="text" id="lcd-line-1" placeholder="Linia 2 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
+                        <input type="text" id="lcd-line-2" placeholder="Linia 3 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
+                        <input type="text" id="lcd-line-3" placeholder="Linia 4 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
+                        <button class="control-button small" style="width: 100%; margin-top: 10px;" onclick="updateLcdText()">Updatează LCD</button>
                     </div>
 
                     <div class="controls-zone">
-                        <label class="control-label"><span id="angle-val">90</span>⁰</label>
+                        <div class="telemetry-display">
+                            Temp: <span id="val-temp">--</span>°C | Umid: <span id="val-hum">--</span>%
+                        </div>
+                        <hr style="width:100%; border:1px inset var(--win-white);">
+                        
+                        <label class="control-label">Poziție Servo: <span id="angle-val">90</span>⁰</label>
                         <input type="range" min="0" max="180" value="90" class="angle-slider" oninput="sendServoCommand(this.value)">
 
-                        <div class="button-row">
-                            <button class="control-button small" onclick="takeShot()">📷 Shot</button>
-                            <button class="control-button small">📡 Scan360</button>
-                        </div>
-
-                        <div class="toggle">
-                            <input type="checkbox" id="liveToggle">
-                            <label for="liveToggle">🔴 Imagine Live</label>
-                        </div>
-
-                        <div class="toggle">
-                            <input type="checkbox" id="flashToggle">
-                            <label for="flashToggle">🔦 Flash</label>
+                        <div class="toggle" style="margin-top: 15px;">
+                            <input type="checkbox" id="fanToggle" onchange="sendFanCommand(this.checked)">
+                            <label for="fanToggle">💨 Pornire Ventilator </label>
                         </div>
                     </div>
 
+                </div>
+
+                <div class="chart-container-title">📈 Istoric Date Senzor</div>
+                <div class="chart-zone">
+                    <canvas id="live-chart" width="790" height="160"></canvas>
                 </div>
             </div>
         </div>

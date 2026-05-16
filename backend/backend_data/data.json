@@ -2,11 +2,16 @@
   "users": [
     {
       "username": "Administrator",
-      "password": "admin123"
+      "password": "admin#123",
+      "isAdmin": true
+    },
+    {
+      "username": "Attila",
+      "password": "123",
+      "isAdmin": false
     }
   ],
   "espData": {
-    "servoDelay": 150,
-    "userFlash": false
+    "servoDelay": 150
   }
 }

@@ -2,12 +2,16 @@ let currentUser = localStorage.getItem('userUsername');
 let isConnected = false;
 let activeUser = null;
 
+// Istoric citiri DHT11
+let dateDHT11 = [];
+
 function $(id) { return document.getElementById(id); }
 
 
 
 // Update Ceas
-function updateClock() {
+function updateClock()
+{
   const now = new Date();
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -18,16 +22,14 @@ function updateClock() {
 
 
 
-// Update ESP connection UI + button availability
+// Update UI conexiune ESP32 + gestionare butone
 function setConnection(status)
 {
   isConnected = !!status;
-
   const led = $('connection-led');
   const text = $('status-text');
   if (led) led.className = isConnected ? 'indicator-green' : 'indicator-red';
   if (text) text.innerText = isConnected ? 'CONECTAT' : 'DECONECTAT';
-
   updateControlButton();
 }
 
@@ -38,26 +40,20 @@ function updateControlButton()
   const controlBtn = $('main-control-btn');
   if (!controlBtn) return;
 
-  // Enabled when:
-  // - logged in
-  // - ESP connected
-  // - nobody is in control OR you are already the active user
   const allowed = !!currentUser && isConnected && (!activeUser || activeUser === currentUser);
   controlBtn.disabled = !allowed;
 
-  // Optional: show who is in control on the button label
   if (!currentUser) {
-    controlBtn.textContent = '🕹️ Control';
+    controlBtn.textContent = '🕹️ Control Panel';
   } else if (activeUser && activeUser !== currentUser) {
     controlBtn.textContent = `🔒 La control: ${activeUser}`;
   } else {
-    controlBtn.textContent = '🕹️ Control';
+    controlBtn.textContent = '🕹️ Control Panel';
   }
 }
 
 
 
-// Window helpers (use classes; keep compatibility with your existing HTML)
 function openWindow(id)
 {
   const target = $(id);
@@ -70,11 +66,9 @@ function openWindow(id)
 
 async function closeWindow(id)
 {
-  // If leaving the control window, release control.
-  if (id === 'camera-window') {
+  if (id === 'control-window') {
     await releaseControl();
   }
-
   const target = $(id);
   const welcome = $('welcome-window');
   if (target) target.style.display = 'none';
@@ -83,17 +77,11 @@ async function closeWindow(id)
 
 
 
-// Acquire control when trying to open the control window
+// Acquire control
 async function openControl()
 {
-  if (!currentUser) {
-    alert('Trebuie să te loghezi!');
-    return;
-  }
-  if (!isConnected) {
-    alert('ESP32 nu este conectat.');
-    return;
-  }
+  if (!currentUser) { alert('Trebuie să te loghezi!'); return; }
+  if (!isConnected) { alert('ESP32 nu este conectat.'); return; }
 
   try {
     const res = await fetch('/api/control/acquire', {
@@ -101,6 +89,7 @@ async function openControl()
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: currentUser })
     });
+
 
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -112,7 +101,7 @@ async function openControl()
 
     activeUser = data.activeUser;
     updateControlButton();
-    openWindow('camera-window');
+    openWindow('control-window');
   } catch (e) {
     console.error(e);
     alert('Eroare de rețea.');
@@ -123,9 +112,7 @@ async function openControl()
 
 async function releaseControl()
 {
-  if (!currentUser) return;
-  if (activeUser !== currentUser) return;
-
+  if (!currentUser || activeUser !== currentUser) return;
   try {
     await fetch('/api/control/release', {
       method: 'POST',
@@ -134,7 +121,7 @@ async function releaseControl()
       keepalive: true
     });
   } catch {
-    //
+    // Suppress error
   } finally {
     activeUser = null;
     updateControlButton();
@@ -148,28 +135,61 @@ async function sendServoCommand(val)
 {
   const angle = parseInt(val, 10);
   const angleLabel = $('angle-val');
-
-  if (angleLabel) angleLabel.innerText = String(angle);
+  if (angleLabel) { angleLabel.innerText = String(angle); }
 
   try {
-    const res = await fetch('/api/command', {
+    const res = await fetch('/api/command/servo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: currentUser, angle })
     });
-
     const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || 'Comandă respinsă.');
-    }
-  } catch (e) {
-    console.error(e);
-  }
+    if (!res.ok) alert(data.error || 'Comandă respinsă.');
+  } catch (e) { console.error(e); }
 }
 
 
 
-// Poll status (updates connection + activeUser)
+// Trimite stare ventilator la backend
+async function sendFanCommand(status) {
+  try {
+    const res = await fetch('/api/command/fan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, fanStatus: status })
+    });
+    const data = await res.json();
+    if (!res.ok) alert(data.error || 'Comandă ventilator respinsă.');
+  } catch (e) { console.error(e); }
+}
+
+
+
+// Trimitere linii text pt. LCD 2004
+async function updateLcdText()
+{
+  const l1 = $('lcd-line-1')?.value || '.';
+  const l2 = $('lcd-line-2')?.value || '.';
+  const l3 = $('lcd-line-3')?.value || '.';
+
+  try {
+    const res = await fetch('/api/command/lcd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, texts: [l1, l2, l3] })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      alert('Texte trimise cu succes spre actualizare LCD!');
+    } else {
+      alert(data.error || 'Eroare la actualizarea textului.');
+    }
+  } catch (e) { console.error(e); }
+}
+
+
+
+// Achizitie statu & actualizare grafic
 async function updateStatus()
 {
   try {
@@ -178,6 +198,17 @@ async function updateStatus()
 
     activeUser = state.activeUser;
     setConnection(state.isConnected);
+
+    if (state.isConnected) {
+      if ($('val-temp')) $('val-temp').innerText = state.temperature;
+      if ($('val-hum')) $('val-hum').innerText = state.humidity;
+      if ($('fanToggle') && document.activeElement !== $('fanToggle')) {
+        $('fanToggle').checked = state.fanStatus;
+      }
+      
+      pushTelemetryData(state.temperature, state.humidity);
+      drawLiveChart();
+    }
   } catch {
     activeUser = null;
     setConnection(false);
@@ -186,41 +217,120 @@ async function updateStatus()
 
 
 
+function pushTelemetryData(temp, hum)
+{
+  // Evităm duplicarea timestamp-urilor identice dacă serverul returnează static rapid
+  if (dateDHT11.length > 0) {
+    let last = dateDHT11[dateDHT11.length - 1];
+    if (last.temp === temp && last.hum === hum && dateDHT11.length >= 10) {
+      return; 
+    }
+  }
+  dateDHT11.push({ temp, hum });
+  if (dateDHT11.length > 10) {
+    dateDHT11.shift(); 
+  }
+}
+
+
+
+// Animare GRAFIC Temp./Humi.
+function drawLiveChart()
+{
+  // FUNDAL
+  const canvas = $('live-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, w, h);
+
+  // GRID
+  ctx.strokeStyle = '#333333';
+  ctx.lineWidth = 1;
+  for (let i = 20; i < w; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+  }
+  for (let j = 20; j < h; j += 20) {
+    ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(w, j); ctx.stroke();
+  }
+
+  if (dateDHT11.length < 2) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '12px "Cascadia Code", monospace';
+    ctx.fillText("Se colectează date minime pentru generare grafic...", 20, h / 2);
+    return;
+  }
+
+  const stepX = w / 9;
+
+  // Scalare date pe axa Y (0 - 100)
+  function getY(val) {
+    return h - 15 - ((val / 100) * (h - 30));
+  }
+
+  // Linie TEMPERATURA
+  ctx.strokeStyle = '#ff0000';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < dateDHT11.length; i++) {
+    let x = i * stepX;
+    let y = getY(dateDHT11[i].temp);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Linie UMIDITATE
+  ctx.strokeStyle = '#00ff00';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < dateDHT11.length; i++) {
+    let x = i * stepX;
+    let y = getY(dateDHT11[i].hum);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Legendă afișată pe grafic
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(5, 5, 230, 25);
+  ctx.font = '11px "Cascadia Code", Arial';
+  ctx.fillStyle = '#ff0000';
+  ctx.fillText("■ Temp (°C)", 10, 22);
+  ctx.fillStyle = '#00ff00';
+  ctx.fillText("■ Umiditate (%)", 120, 22);
+}
+
+
+
 // Update UI autentificare
 function updateAuthUI()
 {
   const authStatus = $('auth-status');
-
   const loginBtn = $('login-btn');
   const registerBtn = $('reg-account-btn');
   const deleteBtn = $('del-account-btn');
   const userField = $('auth-username');
   const passField = $('auth-pass');
+  const fanToggle = $('fanToggle');
 
   if (currentUser) {
-    if (authStatus) {
-      authStatus.innerText = `🔓: ${currentUser}`;
-      authStatus.style.color = '#00ff00';
-    }
-
-    if (deleteBtn) deleteBtn.disabled = false;
+    if (authStatus) { authStatus.innerText = `🔓: ${currentUser}`; authStatus.style.color = '#00ff00'; }
     if (registerBtn) registerBtn.disabled = true;
     if (userField) userField.disabled = true;
     if (passField) passField.disabled = true;
     if (loginBtn) loginBtn.textContent = 'Log out';
+    if (deleteBtn) deleteBtn.disabled = (currentUser === "Administrator") ? true : false;
   } else {
-    if (authStatus) {
-      authStatus.innerText = '🔒 Logare necesară';
-      authStatus.style.color = '#ff0000';
-    }
-
+    if (authStatus) { authStatus.innerText = '🔒 Logare necesară'; authStatus.style.color = '#ff0000'; }
     if (deleteBtn) deleteBtn.disabled = true;
     if (registerBtn) registerBtn.disabled = false;
     if (userField) userField.disabled = false;
     if (passField) passField.disabled = false;
     if (loginBtn) loginBtn.textContent = 'Login';
   }
-
   updateControlButton();
 }
 
@@ -232,16 +342,8 @@ async function handleAuth(type)
   const username = $('auth-username')?.value?.trim() ?? '';
   const password = $('auth-pass')?.value ?? '';
 
-
-  if (type === 'login' && currentUser) {
-    await handleLogoff();
-    return;
-  }
-
-  if (!username || (!password && type !== 'delete')) {
-    alert('Completează utilizatorul și parola.');
-    return;
-  }
+  if (type === 'login' && currentUser) { await handleLogoff(); return; }
+  if (!username || (!password && type !== 'delete')) { alert('Completează utilizatorul și parola.'); return; }
 
   try {
     const res = await fetch(`/api/${type}`, {
@@ -251,10 +353,7 @@ async function handleAuth(type)
     });
 
     const data = await res.json();
-    if (!res.ok || !data.success) {
-      alert(data.error || 'Eroare.');
-      return;
-    }
+    if (!res.ok || !data.success) { alert(data.error || 'Eroare.'); return; }
 
     if (type === 'login') {
       localStorage.setItem('userUsername', username);
@@ -268,30 +367,37 @@ async function handleAuth(type)
       alert('Cont șters cu succes!');
       await handleLogoff();
     }
-  } catch (e) {
-    console.error(e);
-    alert('Eroare de rețea.');
-  }
+  } catch (e) { console.error(e); alert('Eroare de rețea.'); }
 }
 
+
+async function isAdmin(username)
+{
+  const res = await fetch(`/api/admincheck`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username })
+  });
+
+  const result = await res.json();
+  if (!res.ok || !result.success) { alert(result.error || 'Eroare.'); return; }
+
+  return result.isAdmin;
+}
 
 
 async function handleLogoff()
 {
-  // If user had control, release it.
   await releaseControl();
-
   localStorage.removeItem('userUsername');
   currentUser = null;
   updateAuthUI();
-
-  await closeWindow('camera-window');
+  await closeWindow('control-window');
   await closeWindow('login-window');
 }
 
 
 
-// Eliberare control la ichiderea ferestrei
 window.addEventListener('beforeunload', () => {
   if (currentUser && activeUser === currentUser) {
     navigator.sendBeacon?.('/api/control/release', new Blob([
@@ -302,43 +408,10 @@ window.addEventListener('beforeunload', () => {
 
 
 
-async function takeShot()
-{
-  try {
-    const res = await fetch('/api/command/shot', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: currentUser })
-    });
-    
-    if (res.ok) {
-        alert("Comandă trimisă! Așteaptă procesarea...");
-        // Pornim un mic delay apoi reîmprospătăm imaginea
-        setTimeout(refreshImage, 2000); 
-    }
-  } catch (e) { console.error(e); }
-}
-
-
-
-function refreshImage()
-{
-    const img = $('last-shot');
-    const placeholder = $('no-signal');
-    
-    // Adăugăm un timestamp la URL pentru a evita cache-ul browserului
-    img.src = '/api/camera/last?t=' + Date.now();
-    img.style.display = 'block';
-    if (placeholder) placeholder.style.display = 'none';
-}
-
-
-
 document.addEventListener('DOMContentLoaded', () => {
   updateClock();
   updateAuthUI();
   updateStatus();
-
   setInterval(updateClock, 1000);
   setInterval(updateStatus, 1000);
 });

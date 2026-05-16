@@ -1,70 +1,77 @@
 // Board: ESP32 Dev Module
+// Librării necesare instalate în Arduino IDE: DHT sensor library, LiquidCrystal_I2C, ArduinoJson
 
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ESP32Servo.h>
 #include <ArduinoJson.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
 
 
+// CONFIGURARE PINI ====================================================
+const int servoPin = 13;       // COMANDA SERVO
+const int fanPin = 12;         // COMANDA VENTILATOR
+const int buzzerPin = 15;      // COMANDA BUZZER
+const int dhtPin = 27;         // DATE SENSOR DHT11     !! VCC = 3.3V !!
 
-// CONFIGURARE PINI ==================================================================
-const int servoPin = 13;
 const int ledWifiBlue = 2;   
 const int ledServerGreen = 4;
 
-const int SCL = 22;
-const int SDA = 23;
-const int MCLK = 21;
-const int VSYNC = 19;
-const int PCLK = 18;
+// I2C pt. LCD 2004  !! VCC = 5V !!
+const int SDA_PIN = 23;
+const int SCL_PIN = 22;
 
-const int D0 = 25;
-const int D1 = 33;
-const int D2 = 32;
-const int D3 = 35;
-const int D4 = 34;
-const int D5 = 26;
-const int D6 = 27;
-const int D7 = 14;
+#define DHTTYPE DHT11
 
 
-// CONFIGURARE RETEA & SERVER ========================================================
+// INITIALIZARE COMPONENTE ===========================================================
+Servo myServo;
+DHT dht(dhtPin, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 20, 4); // Adresa standard I2C pentru ecrane LCD 2004
+
+
+// CONFIGURARE REȚEA & SERVER ========================================================
 const char* ssid = "";
 const char* password = "";
-const char* angleUrl = "http://192.168.0.62:3000/api/esp/angle";
+const char* syncUrl = "http://192.168.0.62:3000/api/esp/sync";
 
 
-
-// CONFIGURARE COMPONENTE ============================================================
-Servo myServo;
-
-
+String lastLines[3] = {"", "", ""};
 
 void setup()
 {
-	Serial.begin(115200); // Comunicare Serial pt. DEBUG
+	Serial.begin(115200);
 
-	// Init. Led-uri
+	// CONFIG. OUTPUT
 	pinMode(ledWifiBlue, OUTPUT);
 	pinMode(ledServerGreen, OUTPUT);
+	pinMode(fanPin, OUTPUT);
+	pinMode(buzzerPin, OUTPUT);
+	
 	digitalWrite(ledWifiBlue, LOW);
 	digitalWrite(ledServerGreen, LOW);
+	digitalWrite(fanPin, LOW);
+	digitalWrite(buzzerPin, LOW);
 
-	// Init. Servo
+	// START I2C
+	Wire.begin(SDA_PIN, SCL_PIN);
+	lcd.init();
+	lcd.backlight();
+	lcd.setCursor(0, 0);
+	lcd.print("PROJECT TD");
+
+	dht.begin();
 	myServo.attach(servoPin);
 	myServo.write(90);
-	//rotateToAngle(90);
 
-	// Init. WiFi
 	Serial.print("Conectare WiFi ...");
 	WiFi.begin(ssid, password);
 }
 
-
-
 void loop()
 {
-	
 	// Verificare status WiFi:
 	if (WiFi.status() == WL_CONNECTED) {
 		wifiLedFeedback("ok");
@@ -73,70 +80,106 @@ void loop()
 		return;
 	}
 
+	// Citire date DHT11
+	float h = dht.readHumidity();
+	float t = dht.readTemperature();
 
-	// Cerere catre Server:
+	if (isnan(h) || isnan(t))
+	{
+		Serial.println("Eroare la citirea de pe senzorul DHT11!");
+		t = 0;
+		h = 0;
+	}
+
+
+	lcd.setCursor(0, 0);
+	lcd.printf("T:%2.0fc H:%2.0f%%  Servo:%3d", t, h, myServo.read());
+
+	// Trimitere date și preluare comenzi de pe Server prin HTTP POST JSON
 	HTTPClient http;
-	http.begin(angleUrl);
-	int httpCode = http.GET();
+	http.begin(syncUrl);
+	http.addHeader("Content-Type", "application/json");
 
-	if (httpCode == 200) {
-		// Conexiune Server OK
+	// Construim obiectul JSON trimis la Server
+	StaticJsonDocument<200> outboundDoc;
+	outboundDoc["temperature"] = Math.round(t);
+	outboundDoc["humidity"] = Math.round(h);
+	String requestPayload;
+	serializeJson(outboundDoc, requestPayload);
+
+	int httpCode = http.POST(requestPayload);
+
+	if (httpCode == 200)
+	{
 		digitalWrite(ledServerGreen, HIGH);
 
-		String payload = http.getString(); // citeste datele trimise res.json()
-		StaticJsonDocument<200> doc;       // crearea obiectului ArduinoJSON
-		deserializeJson(doc, payload);     // citirea JSON-ului text payload ==> structura JSON
-		int targetAngle = doc["angle"];    // citeste cheia "angle" converteste in int
+		String inboundPayload = http.getString();
+		StaticJsonDocument<512> inboundDoc;
+		deserializeJson(inboundDoc, inboundPayload);
 		
+		// UPDATE SERVO
+		int targetAngle = inboundDoc["angle"];
 		myServo.write(targetAngle);
-		//rotateToAngle(targetAngle);
+
+		// UPDATE FAN
+		bool fanStatus = inboundDoc["fanStatus"];
+		digitalWrite(fanPin, fanStatus ? HIGH : LOW);
+
+		// UPDATE LCD
+		JsonArray texts = inboundDoc["texts"];
+		bool textChanged = false;
+
+		if (!texts.isNull() && texts.size() == 3) {
+			for (int i=0; i<3; i++) {
+				String currentLineText = texts[i].as<String>();
+				
+				// Modificare doar daca sa schimat linia
+				if (currentLineText != lastLines[i])
+				{
+					lastLines[i] = currentLineText;
+					textChanged = true;
+					
+					// CLEAR LINE
+					lcd.setCursor(0, i + 1);
+					lcd.print("                    ");
+					lcd.setCursor(0, i + 1);
+					lcd.print(currentLineText);
+				}
+			}
+		}
+
+		if (textChanged) { beep(); }
+
 	} else {
-		// Conexiune Server NOK
 		digitalWrite(ledServerGreen, LOW);
-		Serial.printf("Eroare Server: %d\n", httpCode);
+		Serial.printf("Eroare Comunicație Server: %d\n", httpCode);
 	}
 
 	http.end();
-	delay(500);
-}
-
-
-
-// NOT USED YET
-void rotateToAngle(int targetAngle)
-{
-
-	int currentAngle = myServo.read();
-	if (currentAngle == targetAngle) return;
-
-	int step = (targetAngle > currentAngle) ? 1 : -1;
-
-	while (currentAngle != targetAngle)
-	{
-		currentAngle += step;
-		myServo.write(currentAngle);
-		delay(10);
-	}
+	delay(1000);
 }
 
 
 
 void wifiLedFeedback(const char* mode)
 {
-  switch(mode)
-  {
-    case "search":
-      digitalWrite(ledWifiBlue, HIGH);
-      delay(100);
-      digitalWrite(ledWifiBlue, LOW);
-      delay(100);
-      break;
+	if (strcmp(mode, "search") == 0) {
+		digitalWrite(ledWifiBlue, HIGH);
+		delay(100);
+		digitalWrite(ledWifiBlue, LOW);
+		delay(100);
+	} else if (strcmp(mode, "ok") == 0) {
+		digitalWrite(ledWifiBlue, HIGH);
+	} else {
+		digitalWrite(ledWifiBlue, LOW);
+	}
+}
 
-    case "ok":
-      digitalWrite(ledWifiBlue, HIGH);
-      break;
 
-    default:
-      digitalWrite(ledWifiBlue, LOW);
-  }
+
+void beep()
+{
+	digitalWrite(buzzerPin, HIGH);
+	delay(150);
+	digitalWrite(buzzerPin, LOW);
 }

@@ -1,4 +1,4 @@
-# 🕹️ Stație IoT Climatică și Servo [v2.5]
+# 🕹️ Stație IoT [v2.5]
 
 Proiect realizat pentru materia **Transmisia Datelor (TD)** în cadrul **Universității Tehnice din Cluj-Napoca (UTCN)**, Centrul Universitar Satu Mare, secția Automatică și Informatică Aplicată.
 

@@ -2,10 +2,31 @@ let currentUser = localStorage.getItem('userUsername');
 let isConnected = false;
 let activeUser = null;
 
-// Istoric citiri DHT11
+// Probe din sensorul DHT11
 let dateDHT11 = [];
 
+
+// Metode ajutatoare
 function $(id) { return document.getElementById(id); }
+
+function openWindow(id)
+{
+  const target = $(id);
+  const welcome = $('welcome-window');
+  if (target) target.style.display = 'flex';
+  if (welcome) welcome.style.display = 'none';
+}
+
+async function closeWindow(id)
+{
+  if (id === 'control-window') {
+    await releaseControl();
+  }
+  const target = $(id);
+  const welcome = $('welcome-window');
+  if (target) target.style.display = 'none';
+  if (welcome) welcome.style.display = 'flex';
+}
 
 
 
@@ -35,6 +56,7 @@ function setConnection(status)
 
 
 
+// Actualizare butonul Control din MAIN MENU
 function updateControlButton()
 {
   const controlBtn = $('main-control-btn');
@@ -54,30 +76,7 @@ function updateControlButton()
 
 
 
-function openWindow(id)
-{
-  const target = $(id);
-  const welcome = $('welcome-window');
-  if (target) target.style.display = 'flex';
-  if (welcome) welcome.style.display = 'none';
-}
-
-
-
-async function closeWindow(id)
-{
-  if (id === 'control-window') {
-    await releaseControl();
-  }
-  const target = $(id);
-  const welcome = $('welcome-window');
-  if (target) target.style.display = 'none';
-  if (welcome) welcome.style.display = 'flex';
-}
-
-
-
-// Acquire control
+// Cerere pentru control
 async function openControl()
 {
   if (!currentUser) { alert('Trebuie să te loghezi!'); return; }
@@ -110,6 +109,7 @@ async function openControl()
 
 
 
+// Eliberare de la control
 async function releaseControl()
 {
   if (!currentUser || activeUser !== currentUser) return;
@@ -121,7 +121,7 @@ async function releaseControl()
       keepalive: true
     });
   } catch {
-    // Suppress error
+    // ignorat
   } finally {
     activeUser = null;
     updateControlButton();
@@ -150,6 +150,27 @@ async function sendServoCommand(val)
 
 
 
+// Trimite viteza ventilator la backend
+async function sendFanSpeedCommand(val)
+{
+  const speed = parseInt(val, 10);
+  const speedLabel = $('fan-speed-val');
+
+  if (speedLabel) { speedLabel.innerText = String(speed); }
+
+  try {
+    const res = await fetch('/api/command/fan/speed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, speed })
+    });
+    const data = await res.json();
+    if (!res.ok) alert(data.error || 'Comandă viteză respinsă.');
+  } catch (e) { console.error(e); }
+}
+
+
+
 // Trimite stare ventilator la backend
 async function sendFanCommand(status) {
   try {
@@ -165,7 +186,7 @@ async function sendFanCommand(status) {
 
 
 
-// Trimitere linii text pt. LCD 2004
+// Trimitere liniile text la backend pt. LCD 2004
 async function updateLcdText()
 {
   const l1 = $('lcd-line-1')?.value || '.';
@@ -186,9 +207,33 @@ async function updateLcdText()
   } catch (e) { console.error(e); }
 }
 
+async function clearLcdText()
+{
+  // Golește casetele de text din interfață
+  if ($('lcd-line-1')) $('lcd-line-1').value = '';
+  if ($('lcd-line-2')) $('lcd-line-2').value = '';
+  if ($('lcd-line-3')) $('lcd-line-3').value = '';
+
+  // Trimite comanda de golire direct la backend pentru a sincroniza ESP32
+  try {
+    const res = await fetch('/api/command/lcd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, texts: ["", "", ""] })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Eroare la ștergerea textului de pe LCD.');
+    }
+  } catch (e) { 
+    console.error(e); 
+  }
+}
+
 
 
 // Achizitie status & actualizare grafic
+// Înlocuiește complet funcția updateStatus() cu aceasta:
 async function updateStatus()
 {
   try {
@@ -211,25 +256,55 @@ async function updateStatus()
         if ($('fan-speed-val')) $('fan-speed-val').innerText = state.fanSpeed;
       }
 
-    if ($('fanLabel')) {
-      if (state.fanSpeed >= 90 && !state.fanStatus) {
-        $('fanLabel').innerText = "⚠️ Pornire Ventilator [Risc suprasolicitare sistem!]";
-      } else {
-        $('fanLabel').innerText = "🍃 Pornire Ventilator"; 
+      if ($('fanLabel')) {
+        if (state.fanSpeed >= 90 && !state.fanStatus) {
+          $('fanLabel').innerText = "⚠️ Pornire Ventilator [Risc suprasolicitare sistem!]";
+        } else {
+          $('fanLabel').innerText = "🍃 Pornire Ventilator"; 
+        }
       }
-    }
       
       pushTelemetryData(state.temperature, state.humidity);
       drawLiveChart();
+
+      if ($('saveToggle') && $('saveToggle').checked) {
+        saveTelemetryToFile(state.temperature, state.humidity);
+      }
+    } else {
+      if ($('control-window') && $('control-window').style.display === 'flex') {
+        alert('Conexiunea cu ESP32 a fost pierdută!');
+        await closeWindow('control-window');
+      }
     }
   } catch {
     activeUser = null;
     setConnection(false);
+    
+    if ($('control-window') && $('control-window').style.display === 'flex') {
+      alert('Eroare de rețea!');
+      await closeWindow('control-window');
+    }
   }
 }
 
 
 
+// Salveaza telemetria local
+async function saveTelemetryToFile(temperature, humidity) {
+  try {
+    await fetch('/api/log-telemetry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ temperature, humidity })
+    });
+  } catch (e) {
+    console.error('Eroare la transmiterea logurilor:', e);
+  }
+}
+
+
+
+// Incarca punctele citite din sensor DHT11 in vector
 function pushTelemetryData(temp, hum)
 {
   dateDHT11.push({ temp, hum });
@@ -241,8 +316,7 @@ function pushTelemetryData(temp, hum)
 
 
 
-// Animare GRAFIC Temp./Humi.
-// Animare GRAFIC Temp./Humi.
+// GRAFIC Temperatura / Umiditate
 function drawLiveChart()
 {
   // FUNDAL
@@ -274,44 +348,43 @@ function drawLiveChart()
 
   const stepX = w / (dateDHT11.length - 1 || 1);
 
-  // MODIFICARE: Aceeași funcție, dar acum calculează dinamic procentul pe scări personalizate
-  function getY(val, min, max) {
-    // Constrângem valoarea să nu iasă fizic din marginile canvas-ului
+  function getY(val, min, max)
+  {
     let v = Math.max(min, Math.min(max, val));
     let procent = (v - min) / (max - min);
     return h - 15 - (procent * (h - 30));
   }
 
-  // Linie TEMPERATURA (Zoom între 15 și 40)
+  // Linie TEMPERATURA
   ctx.strokeStyle = '#ff0000';
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (let i = 0; i < dateDHT11.length; i++) {
     let x = i * stepX;
-    let y = getY(dateDHT11[i].temp, 15, 40); // <-- Pasăm min: 15, max: 40
+    let y = getY(dateDHT11[i].temp, 10, 30);
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
-  // Linie UMIDITATE (Zoom între 20 și 85)
+  // Linie UMIDITATE
   ctx.strokeStyle = '#00ff00';
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (let i = 0; i < dateDHT11.length; i++) {
     let x = i * stepX;
-    let y = getY(dateDHT11[i].hum, 20, 85); // <-- Pasăm min: 20, max: 85
+    let y = getY(dateDHT11[i].hum, 50, 100); // <-- Pasăm min: 20, max: 85
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
-  // Legendă afișată pe grafic (actualizată cu noile praguri ca să arate profi)
+  // Legenda grafic
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(5, 5, 260, 25);
   ctx.font = '11px "Cascadia Code", Arial';
   ctx.fillStyle = '#ff0000';
-  ctx.fillText("■ Temp (15-40°C)", 10, 22);
+  ctx.fillText("■ Temp (10-30°C)", 10, 22);
   ctx.fillStyle = '#00ff00';
-  ctx.fillText("■ Umiditate (20-85%)", 130, 22);
+  ctx.fillText("■ Umiditate (50-100%)", 130, 22);
 }
 
 
@@ -383,6 +456,17 @@ async function handleAuth(type)
 
 
 
+async function handleLogoff()
+{
+  await releaseControl();
+  localStorage.removeItem('userUsername');
+  currentUser = null;
+  updateAuthUI();
+  await closeWindow('control-window');
+  await closeWindow('login-window');
+}
+
+
 async function isAdmin(username)
 {
   const res = await fetch(`/api/admincheck`, {
@@ -399,37 +483,6 @@ async function isAdmin(username)
 
 
 
-async function sendFanSpeedCommand(val)
-{
-  const speed = parseInt(val, 10);
-  const speedLabel = $('fan-speed-val');
-
-  if (speedLabel) { speedLabel.innerText = String(speed); }
-
-  try {
-    const res = await fetch('/api/command/fan/speed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: currentUser, speed })
-    });
-    const data = await res.json();
-    if (!res.ok) alert(data.error || 'Comandă viteză respinsă.');
-  } catch (e) { console.error(e); }
-}
-
-
-
-async function handleLogoff()
-{
-  await releaseControl();
-  localStorage.removeItem('userUsername');
-  currentUser = null;
-  updateAuthUI();
-  await closeWindow('control-window');
-  await closeWindow('login-window');
-}
-
-
 
 window.addEventListener('beforeunload', () => {
   if (currentUser && activeUser === currentUser) {
@@ -439,12 +492,13 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
-
-
 document.addEventListener('DOMContentLoaded', () => {
+  localStorage.removeItem('userUsername');
+  currentUser = null;
+
   updateClock();
   updateAuthUI();
   updateStatus();
   setInterval(updateClock, 1000);
-  setInterval(updateStatus, 300);
+  setInterval(updateStatus, 250);
 });

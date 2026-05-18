@@ -5,9 +5,17 @@ const path = require('path');
 
 const app = express();
 const DATA_FILE = path.join(__dirname, 'backend_data/data.json');
+const LOG_DIR = path.join(__dirname, '../frontend/frontend_data');
+
+
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
+
 
 // Detecție ESP OFFLINE
 const espCheckTime = 5000; // [ms]
+let espConnected = false;
 
 app.use(cors());
 app.use(express.json());
@@ -16,14 +24,13 @@ app.use(express.json());
 function isBlank(v) { return !v || typeof v !== 'string' || !v.trim(); }
 
 
-
-// Culori ANSI pt. loguri Server
+// Culori ANSI pt. loguri
 const logColors = {
   reset: "\x1b[0m",
-  red: "\x1b[38;2;255;85;85m",     // Un roșu aprins stil consolă
-  cream: "\x1b[38;2;245;245;220m", // Nuanță de crem/bej (RGB: 245, 245, 220)
-  green: "\x1b[38;2;85;255;85m",   // Verde deschis pentru succes
-  cyan: "\x1b[36m"                 // Albastru deschis pentru info/sistem
+  red: "\x1b[38;2;255;85;85m",
+  cream: "\x1b[38;2;245;245;220m",
+  green: "\x1b[38;2;85;255;85m",
+  cyan: "\x1b[36m"
 };
 
 
@@ -41,22 +48,41 @@ const systemState = {
 };
 
 
+
 // LOAD data
 function loadData()
 {
   if (!fs.existsSync(DATA_FILE)) {
-    return { users: [], espData: { servoDelay: 150, texts: [" - ", " - ", " - "]} }; 
+    console.log(`${logColors.green}[SYSTEM]${logColors.reset}: DATA_FILE negăsit. Loading DEFAULT ... ${logColors.reset}`);
+    return { users: [ { username: "Admin", password: "admin123", isAdmin: true } ], espData: { 
+      name: "ESP32 Wroom",
+      servoDelay: 150, 
+      texts: [" - ", " - ", " - "]
+    }}; 
   }
 
   try {
     const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    if (!data.users){ data.users = []; }
+
+    if (!data.users){ data.users = [{ username: "Admin", password: "admin123", isAdmin: true }]; }
+
+    if (!data.espData) {
+      data.espData.name = "ESP32 Wroom";
+      data.espData.servoDelay = 150;
+      data.espData.texts = [" - ", " - ", " - "];
+    }
 
     return data;
   } catch (err) {
-    return { users: [], espData: {} };
+    console.log(`${logColors.green}[SYSTEM]${logColors.reset}: Eroare citire DATA_FILE. Loading DEFAULT ... ${logColors.reset}`);
+    return { users: [{ username: "Admin", password: "admin123", isAdmin: true }], espData: { 
+      name: "ESP32 Wroom",
+      servoDelay: 150, 
+      texts: [" - ", " - ", " - "]
+    }}; 
   }
 }
+
 
 
 // SAVE data
@@ -83,7 +109,7 @@ app.post('/api/register', (req, res) => {
   data.users.push({ username: username.trim(), password: password.trim(), isAdmin: false });
   saveData(data);
 
-  console.log(`${logColors.cyan}[AUTH]:${logColors.reset} ${username} ${logColors.cyan}înregistrat cu SUCCES!${logColors.reset}`);
+  console.log(`${logColors.cyan}[AUTH]${logColors.reset}: ${username} înregistrat cu SUCCES ...`);
   res.json({ success: true });
 });
 
@@ -103,7 +129,7 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ success: false, error: 'Nume Utilizator sau Parolă invalidă!' });
   }
 
-  console.log(`${logColors.cyan}[AUTH]:${logColors.reset} ${username} ${logColors.cyan}logat cu SUCCES!${logColors.reset}`);
+  console.log(`${logColors.cyan}[AUTH]${logColors.reset}: ${username} s-a logat cu SUCCES ...`);
   res.json({ success: true, username: user.username });
 });
 
@@ -127,7 +153,7 @@ app.post('/api/delete', (req, res) => {
   saveData(data);
   if (systemState.activeUser === username) systemState.activeUser = null;
 
-  console.log(`${logColors.red}[DEL]:${logColors.reset} ${username} ${logColors.cyan}șters cu SUCCES!${logColors.reset}`);
+  console.log(`${logColors.cyan}[AUTH]${logColors.reset}: ${username} a fost șters cu SUCCES ...`);
   res.json({ success: true, message: 'Cont șters cu succes!' });
 });
 
@@ -148,6 +174,7 @@ app.post('/api/admincheck', (req, res) => {
 });
 
 
+
 // Cerere control
 app.post('/api/control/acquire', (req, res) => {
   const { username } = req.body;
@@ -165,7 +192,7 @@ app.post('/api/control/acquire', (req, res) => {
 
   systemState.activeUser = username;
 
-  console.log(`${logColors.cream}[CONTROL]:${logColors.reset} ${username} ${logColors.cream}a primit controlul!${logColors.reset}`);
+  console.log(`${logColors.cream}[CONTROL]:${logColors.reset} ${username} a preluat controlul ...`);
   res.json({ success: true, activeUser: systemState.activeUser });
 });
 
@@ -184,7 +211,7 @@ app.post('/api/control/release', (req, res) => {
 
   systemState.activeUser = null;
 
-  console.log(`${logColors.cream}[CONTROL]:${logColors.reset} ${username} ${logColors.cream}a pierdut controlul!${logColors.reset}`);
+  console.log(`${logColors.cream}[CONTROL]:${logColors.reset} ${username} a pierdut controlul ...`);
   res.json({ success: true });
 });
 
@@ -192,11 +219,10 @@ app.post('/api/control/release', (req, res) => {
 
 // Achizitie date FRONTEND
 app.get('/api/status', (req, res) => {
-  const isOnline = (Date.now() - systemState.lastCheckIn) < espCheckTime;
   res.json({
     servoAngle: systemState.servoAngle,
     activeUser: systemState.activeUser,
-    isConnected: isOnline,
+    isConnected: espConnected, // Trimite direct starea curentă salvată de server
     temperature: systemState.temperature,
     humidity: systemState.humidity,
     fanStatus: systemState.fanStatus,
@@ -236,6 +262,7 @@ app.post('/api/command/fan', (req, res) => {
 
 
 
+// Comandă modificare viteză ventilator
 app.post('/api/command/fan/speed', (req, res) => {
   const { username, speed } = req.body;
   if (systemState.activeUser !== username) {
@@ -268,9 +295,15 @@ app.post('/api/command/lcd', (req, res) => {
 
 
 
-// ESP32 trimite telemetria (DHT11) și citește noile comenzi (Servo, Fan, Texte LCD)
+// { ESP32 }: trimite telemetria (DHT11) și citește noile comenzi (Servo, Fan, Texte LCD) 
 app.post('/api/esp/sync', (req, res) => {
   systemState.lastCheckIn = Date.now();
+
+  if (!espConnected) {
+    espConnected = true;
+    console.log(`${logColors.red}[ESP]:${logColors.reset} s-a conectat ...`);
+  }
+
   const { temperature, humidity } = req.body;
   
   if (temperature !== undefined) systemState.temperature = Number(temperature);
@@ -285,12 +318,65 @@ app.post('/api/esp/sync', (req, res) => {
 });
 
 
+
+// Trimite datele telemetrie pt. salvarea locala.
+app.post('/api/log-telemetry', (req, res) => {
+  const { temperature, humidity } = req.body;
+
+  // Generare fisier "azi"
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const fileName = `${year}-${month}-${day}.json`;
+  const filePath = path.join(LOG_DIR, fileName);
+
+  let fileData = [];
+
+  // Dacă fișierul de azi există deja, îi citim conținutul curent
+  if (fs.existsSync(filePath)) {
+    try {
+      fileData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (err) {
+      fileData = [];
+    }
+  }
+
+  // Adaugă noua înregistrare
+  fileData.push({
+    timestamp: now.toLocaleTimeString('ro-RO'),
+    temperature: Number(temperature),
+    humidity: Number(humidity)
+  });
+
+  // Salvare in fisier
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Nu s-au putut salva datele.' });
+  }
+});
+
+
+
+// Verificare conexiune ESP32
+setInterval(() => {
+  const isOnline = (Date.now() - systemState.lastCheckIn) < espCheckTime;
+
+  if (!isOnline && espConnected) {
+    espConnected = false;
+    systemState.activeUser = null;
+    console.log(`${logColors.red}[ESP]:${logColors.reset} s-a deconectat ...`);
+  }
+}, 5000);
+
+
+
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`${logColors.green}=======================================`);
-  console.log(`[SYSTEM]: Server pornit pe portul: ${logColors.cyan}${PORT}${logColors.reset}`);
-  console.log(`${logColors.green}=======================================${logColors.reset}`);
+  console.log(`${logColors.green}[SYSTEM]${logColors.reset}: Server pornit pe portul: ${logColors.cyan}${PORT}${logColors.reset}`);
 });

@@ -82,10 +82,13 @@
                     
                     <div class="lcd-zone">
                         <div class="lcd-header">✍ Text Ecran LCD 2004</div>
-                        <input type="text" id="lcd-line-1" placeholder="Linia 2 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
-                        <input type="text" id="lcd-line-2" placeholder="Linia 3 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
-                        <input type="text" id="lcd-line-3" placeholder="Linia 4 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
-                        <button class="control-button small" style="width: 100%; margin-top: 10px;" onclick="updateLcdText()">⏏️ Upload</button>
+                        <input type="text" id="lcd-line-1" placeholder="Linia 1 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
+                        <input type="text" id="lcd-line-2" placeholder="Linia 2 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
+                        <input type="text" id="lcd-line-3" placeholder="Linia 3 (max 20 caractere)" class="win-input lcd-input" maxlength="20">
+                        <div style="display: flex; gap: 8px; width: 100%; margin-top: 10px;">
+                            <button class="control-button small" style="flex: 1; width: auto;" onclick="updateLcdText()">⏏️ Încarcă</button>
+                            <button class="control-button small" style="flex: 1; width: auto;" onclick="clearLcdText()">🧹 Șterge</button>
+                        </div>
                     </div>
 
                     <div class="controls-zone">
@@ -110,7 +113,13 @@
 
                 </div>
 
-                <div class="chart-container-title">📈 Istoric Date Senzor</div>
+                <div class="chart-container-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <span>📈 Istoric Date Senzor</span>
+                    <div class="toggle" style="margin-top: 0;">
+                        <input type="checkbox" id="saveToggle">
+                        <label for="saveToggle">💾 Salvare istoric (local)</label>
+                    </div>
+                </div>
                 <div class="chart-zone">
                     <canvas id="live-chart" width="790" height="160"></canvas>
                 </div>

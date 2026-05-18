@@ -1,22 +1,23 @@
 {
   "users": [
     {
-      "username": "Administrator",
-      "password": "admin#123",
+      "username": "Admin",
+      "password": "admin123",
       "isAdmin": true
     },
     {
       "username": "Attila",
       "password": "123",
       "isAdmin": false
-    },
-    {
-      "username": "Attila2",
-      "password": "123",
-      "isAdmin": false
     }
   ],
   "espData": {
-    "servoDelay": 150
+    "name": "ESP32 Wroom",
+    "servoDelay": 150,
+    "texts": [
+      " - ",
+      " - ",
+      " - "
+    ]
   }
 }

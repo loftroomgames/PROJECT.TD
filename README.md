@@ -15,20 +15,19 @@ Proiectul este împărțit în trei componente:
 
 ---
 
-## 📋 Cele 10 Caracteristici Specifice ale Produsului IoT
+## 📋 9 Caracteristici Specifice ale Produsului IoT
 
 Conform cerințelor din barem, stația IoT este tratată ca o entitate (produs) definită prin exact 10 caracteristici unice stocate și transmise prin obiectele structurate JSON:
 
 1. **`id`**: Identificatorul unic al dispozitivului în rețea (ex: `ESP32`).
 2. **`productName`**: Numele/Titlul comercial al stației de control (ex: `IoT Unit`).
-3. **`location`**: Amplasamentul fizic sau laboratorul unde este instalat dispozitivul (ex: `Satu Mare Lab`).
-4. **`firmwareVersion`**: Versiunea curentă de software rulată pe microcontroler (ex: `v2.5`).
-5. **`temperature`**: Valoarea curentă a temperaturii ambientale citită de senzorul DHT11 (°C).
-6. **`humidity`**: Valoarea curentă a umidității relative a aerului citită de senzorul DHT11 (%).
-7. **`servoAngle`**: Poziția unghiulară curentă a brațului de orientare (0° - 180°).
-8. **`fanStatus`**: Starea logică de funcționare a ventilatorului (True = Pornit / False = Oprit).
-9. **`fanSpeed`**: Viteza de rotație a ventilatorului controlată prin turație PWM (0% - 100%).
-10. **`activeUser`**: Operatorul autentificat care deține în prezent dreptul exclusiv de control.
+3. **`firmwareVersion`**: Versiunea curentă de software rulată pe microcontroler (ex: `v2.5`).
+4. **`temperature`**: Valoarea curentă a temperaturii ambientale citită de senzorul DHT11 (°C).
+5. **`humidity`**: Valoarea curentă a umidității relative a aerului citită de senzorul DHT11 (%).
+6. **`servoAngle`**: Poziția unghiulară curentă a brațului de orientare (0° - 180°).
+7. **`fanStatus`**: Starea logică de funcționare a ventilatorului (True = Pornit / False = Oprit).
+8. **`fanSpeed`**: Viteza de rotație a ventilatorului controlată prin turație PWM (0% - 100%).
+9. **`activeUser`**: Operatorul autentificat care deține în prezent dreptul exclusiv de control.
 
 ---
 

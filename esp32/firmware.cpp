@@ -68,29 +68,29 @@ void setup()
 
 
 	// Initializare LCD 2004
-  Wire.begin(SDA_PIN, SCL_PIN);
-  lcd.begin(&Wire);
-  lcd.backlight();
-  lcd.display();
-  lcd.clear();
-  systemPrint("Booting ...");
-  delay(7000);
+	Wire.begin(SDA_PIN, SCL_PIN);
+	lcd.begin(&Wire);
+	lcd.backlight();
+	lcd.display();
+	lcd.clear();
+	systemPrint("Booting ...");
+	delay(7000);
 
-  // Initializare Sensore Temp./Umid.
-  systemPrint("Init. DHT11");
-  delay(1000);
+	// Initializare Sensore Temp./Umid.
+	systemPrint("Init. DHT11");
+	delay(1000);
 	dht.begin();
 
-  // Initializare Servo
-  systemPrint("Init. Servo");
-  delay(1000);
+	// Initializare Servo
+	systemPrint("Init. Servo");
+	delay(1000);
 	myServo.attach(servoPin);
 	myServo.write(currentServoAngle);
 
 
-  // Initializare Wi-Fi
-  systemPrint("Init. Wi-Fi");
-  delay(1000);
+	// Initializare Wi-Fi
+	systemPrint("Init. Wi-Fi");
+	delay(1000);
 	WiFi.begin(ssid, password);
 }
 
@@ -228,7 +228,6 @@ void rotateToAngle(int targetAngle)
     myServo.write(currentServoAngle);
     delay(15);
   }
-  
 }
 
 

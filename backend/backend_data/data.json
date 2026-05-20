@@ -1,14 +1,9 @@
 {
   "users": [
     {
-      "username": "Admin",
-      "password": "admin123",
+      "username": "Administrator",
+      "password": "admin#123",
       "isAdmin": true
-    },
-    {
-      "username": "Attila",
-      "password": "123",
-      "isAdmin": false
     }
   ],
   "espData": {

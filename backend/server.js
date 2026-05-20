@@ -301,7 +301,7 @@ app.post('/api/esp/sync', (req, res) => {
 
   if (!espConnected) {
     espConnected = true;
-    console.log(`${logColors.red}[ESP]:${logColors.reset} s-a conectat ...`);
+    console.log(`${logColors.green}[SYSTEM]${logColors.reset}: ESP s-a ${logColors.green}conectat${logColors.reset} ...`);
   }
 
   const { temperature, humidity } = req.body;
@@ -367,7 +367,7 @@ setInterval(() => {
   if (!isOnline && espConnected) {
     espConnected = false;
     systemState.activeUser = null;
-    console.log(`${logColors.red}[ESP]:${logColors.reset} s-a deconectat ...`);
+    console.log(`${logColors.green}[SYSTEM]${logColors.reset}: ESP s-a ${logColors.red}deconectat${logColors.reset} ...`);
   }
 }, 5000);
 

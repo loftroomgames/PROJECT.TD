@@ -34,6 +34,7 @@ bool SERVER_OK = false;
 // INITIALIZARE COMPONENTE ===========================================================
 Servo myServo;
 int currentServoAngle = 90;
+int currentServoDelay = 15;
 
 DHT dht(dhtPin, DHTTYPE);
 LCD_I2C lcd(0x27, 20, 4);
@@ -74,32 +75,32 @@ void setup()
 
 
 	// Initializare LCD 2004
-  Wire.begin(SDA_PIN, SCL_PIN);
-  lcd.begin(&Wire);
-  lcd.backlight();
-  lcd.display();
-  lcd.clear();
-  systemPrint("Initializare...");
-  delay(7000);
+	  Wire.begin(SDA_PIN, SCL_PIN);
+	  lcd.begin(&Wire);
+	  lcd.backlight();
+	  lcd.display();
+	  lcd.clear();
+	  systemPrint("Initializare...");
+	  delay(7000);
 
-  // Initializare Sensore Temp./Umid.
-  systemPrint("Init. DHT11");
-  delay(1000);
-	dht.begin();
+	  // Initializare Sensore Temp./Umid.
+	  systemPrint("Init. DHT11");
+	  delay(1000);
+		dht.begin();
 
-  // Initializare Servo
-  systemPrint("Init. Servo");
-  delay(1000);
-	myServo.attach(servoPin);
-	myServo.write(currentServoAngle);
+	  // Initializare Servo
+	  systemPrint("Init. Servo");
+	  delay(1000);
+		myServo.attach(servoPin);
+		myServo.write(currentServoAngle);
 
 
-  // Initializare Wi-Fi
-  systemPrint("Init. Wi-Fi");
-  delay(1000);
+	  // Initializare Wi-Fi
+	  systemPrint("Init. Wi-Fi");
+	  delay(1000);
 
 	wifiMulti.addAP(ssidHome, passwordHome);
-  wifiMulti.addAP(ssidHotspot, passwordHotspot);
+	wifiMulti.addAP(ssidHotspot, passwordHotspot);
 }
 
 
@@ -176,6 +177,7 @@ void loop()
 		deserializeJson(inboundDoc, inboundPayload);
 		
 		// UPDATE SERVO
+		currentServoDelay = inboundDoc["servoDelay"];
 		int targetAngle = inboundDoc["angle"];
     if(targetAngle != currentServoAngle)
     {
@@ -246,7 +248,7 @@ void rotateToAngle(int targetAngle)
   {
     currentServoAngle += step;
     myServo.write(currentServoAngle);
-    delay(15);
+    delay(currentServoDelay);
   }
   
 }

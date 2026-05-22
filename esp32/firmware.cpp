@@ -1,6 +1,6 @@
 // Board: ESP32 Dev Module WROOM 30pin
 
-#include <WiFi.h>
+#include <WiFiMulti.h>
 #include <HTTPClient.h>
 #include <ESP32Servo.h>
 #include <ArduinoJson.h>
@@ -40,11 +40,17 @@ LCD_I2C lcd(0x27, 20, 4);
 
 
 // CONFIGURARE REȚEA & SERVER ========================================================
-const char* ssid = "";
-const char* password = "";
-const char* syncUrl = "http://192.168.0.62:3000/api/esp/sync";
+WiFiMulti wifiMulti;
 
+const char* ssidHome = "";
+const char* passwordHome = "";
+const char* urlHome = "http://192.168.0.62:3000/api/esp/sync";
 
+const char* ssidHotspot = "";
+const char* passwordHotspot = "";
+const char* urlHotspot = "http://10.194.216.84:3000/api/esp/sync";
+
+String currentSyncUrl = "";
 String lastLines[3] = {"", "", ""};
 
 
@@ -91,7 +97,9 @@ void setup()
   // Initializare Wi-Fi
   systemPrint("Init. Wi-Fi");
   delay(1000);
-	WiFi.begin(ssid, password);
+
+	wifiMulti.addAP(ssidHome, passwordHome);
+  wifiMulti.addAP(ssidHotspot, passwordHotspot);
 }
 
 
@@ -99,15 +107,29 @@ void setup()
 void loop()
 {
 	// Verificare status WiFi:
-  if (WiFi.status() == WL_CONNECTED) {
+  if (wifiMulti.run() == WL_CONNECTED) {
 
-    wifiLedFeedback("ok"); // feedback led Server OK
-    if(!WIFI_OK) { WIFI_OK = true; beep(1); }  // feedback sonor Wi-Fi OK
+    if(!WIFI_OK) { 
+			WIFI_OK = true; 
+			beep(1); // feedback sonor Wi-Fi OK
+
+			if (WiFi.SSID() == String(ssidHome)) {
+        currentSyncUrl = urlHome;
+        systemPrint("Conn. HOME");
+      } else if (WiFi.SSID() == String(ssidHotspot)) {
+        currentSyncUrl = urlHotspot;
+        systemPrint("Conn. MOBIL");
+      }
+
+			delay(500);
+		}
+
+		wifiLedFeedback("ok"); // feedback led Server OK
 
 	} else {
 
-    if(WIFI_OK) { WIFI_OK = false; }
-    systemPrint("Searching ...");
+    if(WIFI_OK) { WIFI_OK = false; currentSyncUrl = ""; digitalWrite(ledServerGreen, LOW); SERVER_OK = false; }
+    systemPrint("Cautare ...");
 		wifiLedFeedback("search");
 		return;
 
@@ -125,12 +147,12 @@ void loop()
 	}
 
 	lcd.home();
-	lcd.printf("T:%2.0fC H:%2.0f%%  S:%3d ", t, h, currentServoAngle);
+	lcd.printf("T:%2.0fC H:%2.0f%%  S:%3d  ", t, h, currentServoAngle);
 
 
 	// Trimitere date și preluare comenzi de pe Server prin HTTP POST JSON
 	HTTPClient http;
-	http.begin(syncUrl);
+	http.begin(currentSyncUrl);
 	http.addHeader("Content-Type", "application/json");
 
 
@@ -164,13 +186,10 @@ void loop()
 		bool fanStatus = inboundDoc["fanStatus"];
     int fanSpeed = inboundDoc["fanSpeed"];
 
-    if (fanStatus) 
-    {
+    if (fanStatus) {
       int dutyCycle = map(fanSpeed, 0, 100, 0, 255);
       analogWrite(fanPin, dutyCycle);
-    } 
-    else 
-    {
+    } else {
       analogWrite(fanPin, 0);
     }
 
@@ -280,3 +299,5 @@ void dataLedFeedback()
 	delay(25);
 	digitalWrite(ledDataYellow, LOW);
 }
+
+

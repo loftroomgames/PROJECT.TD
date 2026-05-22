@@ -98,11 +98,17 @@
                         <hr style="width:100%; border:1px inset var(--win-white);">
                         
                         <label class="control-label">Poziție Servo: <span id="angle-val">90</span>⁰</label>
-                        <input type="range" min="0" max="180" value="90" class="angle-slider" oninput="sendServoCommand(this.value)">
+                        <input type="range" min="0" max="180" value="90" class="angle-slider" onchange="sendServoCommand(this.value)">
+
+                        <label class="control-label" style="margin-top: 10px;">Delay Servo (0..100 ms):</label>
+                        <div style="display: flex; gap: 8px; width: 100%; margin-top: 4px;">
+                            <input type="number" id="servoDelayInput" class="win-input" style="flex: 1; margin-bottom: 0px !important; padding: 4px;" min="0" max="100" value="15">
+                            <button class="control-button small" style="width: auto; padding: 0 12px; margin-top: 0;" onclick="sendServoDelayFromInput()">⚙️ Setează</button>
+                        </div>
 
                         <div class="toggle" style="margin-top: 15px;">
                             <input type="checkbox" id="fanToggle" onchange="sendFanCommand(this.checked)">
-                            <label for="fanToggle" id="fanLabel">🍃 Pornire Ventilator</label>
+                            <label for="fanToggle" id="fanLabel">Ⓜ️ Pornire Ventilator</label>
                         </div>
 
                         <div style="margin-top: 10px;">

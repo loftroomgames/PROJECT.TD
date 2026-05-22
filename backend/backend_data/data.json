@@ -13,7 +13,7 @@
   ],
   "espData": {
     "name": "ESP32 Wroom",
-    "servoDelay": 150,
+    "servoDelay": 5,
     "texts": [
       " - ",
       " - ",

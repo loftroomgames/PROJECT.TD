@@ -40,6 +40,7 @@ const logColors = {
 const systemState = {
   lastCheckIn: 0,
   servoAngle: 90,
+  servoDelay: 15,
   temperature: 0,
   humidity: 0,
   fanStatus: false,
@@ -222,8 +223,9 @@ app.post('/api/control/release', (req, res) => {
 app.get('/api/status', (req, res) => {
   res.json({
     servoAngle: systemState.servoAngle,
+    servoDelay: systemState.servoDelay,
     activeUser: systemState.activeUser,
-    isConnected: espConnected, // Trimite direct starea curentă salvată de server
+    isConnected: espConnected,
     temperature: systemState.temperature,
     humidity: systemState.humidity,
     fanStatus: systemState.fanStatus,
@@ -245,6 +247,29 @@ app.post('/api/command/servo', (req, res) => {
     return res.status(400).json({ success: false, error: 'Unghi invalid (0..180)!' });
   }
   systemState.servoAngle = Math.round(a);
+  res.json({ success: true });
+});
+
+
+
+// Comanda Delay Servo de la FRONTEND
+app.post('/api/command/servo/delay', (req, res) => {
+  const { username, delay } = req.body;
+  if (systemState.activeUser !== username) {
+    return res.status(403).json({ success: false, error: 'Nu ai controlul acum!' });
+  }
+  
+  const d = Number(delay);
+  if (!Number.isFinite(d) || d < 0 || d > 100) {
+    return res.status(400).json({ success: false, error: 'Delay invalid! Valori permise: 0..100 ms.' });
+  }
+  
+  systemState.servoDelay = Math.round(d);
+
+  const data = loadData();
+  data.espData.servoDelay = systemState.servoDelay;
+  saveData(data);
+
   res.json({ success: true });
 });
 
@@ -312,6 +337,7 @@ app.post('/api/esp/sync', (req, res) => {
 
   res.json({ 
     angle: systemState.servoAngle,
+    servoDelay: systemState.servoDelay,
     fanStatus: systemState.fanStatus,
     fanSpeed: systemState.fanSpeed,
     texts: systemState.texts
@@ -387,6 +413,9 @@ setInterval(() => {
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const PORT = process.env.PORT || 3000;
+
+const initData = loadData();
+if (initData.espData && initData.espData.servoDelay) systemState.servoDelay = initData.espData.servoDelay;
 
 app.listen(PORT, () => {
   console.log(`${logColors.green}[SYSTEM]${logColors.reset}: Server pornit pe portul: ${logColors.cyan}${PORT}${logColors.reset}`);

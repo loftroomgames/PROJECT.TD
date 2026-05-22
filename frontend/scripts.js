@@ -130,7 +130,7 @@ async function releaseControl()
 
 
 
-// Trimite unghiul la backend
+// Trimite unghiul la BACKEND
 async function sendServoCommand(val)
 {
   const angle = parseInt(val, 10);
@@ -146,6 +146,38 @@ async function sendServoCommand(val)
     const data = await res.json();
     if (!res.ok) alert(data.error || 'Comandă respinsă.');
   } catch (e) { console.error(e); }
+}
+
+
+
+// Trimite comanda de delay la BACKEND
+async function sendServoDelayFromInput()
+{
+  const inputField = $('servoDelayInput');
+  if (!inputField) return;
+
+  const delay = parseInt(inputField.value, 10);
+
+  // Validare direct în Frontend
+  if (isNaN(delay) || delay < 0 || delay > 100) {
+    alert('Eroare: Valoarea delay-ului trebuie să fie un număr între 0 și 100 ms!');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/command/servo/delay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, delay })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Comandă delay respinsă.');
+    }
+  } catch (e) { 
+    console.error(e); 
+    alert('Eroare de rețea la setarea delay-ului.');
+  }
 }
 
 
@@ -256,11 +288,15 @@ async function updateStatus()
         if ($('fan-speed-val')) $('fan-speed-val').innerText = state.fanSpeed;
       }
 
+      if ($('servoDelayInput') && document.activeElement !== $('servoDelayInput')) {
+        $('servoDelayInput').value = state.servoDelay;
+      }
+
       if ($('fanLabel')) {
         if (state.fanSpeed >= 90 && !state.fanStatus) {
           $('fanLabel').innerText = "⚠️ Pornire Ventilator [Risc suprasolicitare sistem!]";
         } else {
-          $('fanLabel').innerText = "🍃 Pornire Ventilator"; 
+          $('fanLabel').innerText = "Ⓜ️ Pornire Ventilator"; 
         }
       }
       

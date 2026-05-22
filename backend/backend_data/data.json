@@ -4,6 +4,11 @@
       "username": "Administrator",
       "password": "admin#123",
       "isAdmin": true
+    },
+    {
+      "username": "SiketJozsefAttila",
+      "password": "Password#191",
+      "isAdmin": false
     }
   ],
   "espData": {

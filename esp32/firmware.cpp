@@ -68,29 +68,29 @@ void setup()
 
 
 	// Initializare LCD 2004
-	Wire.begin(SDA_PIN, SCL_PIN);
-	lcd.begin(&Wire);
-	lcd.backlight();
-	lcd.display();
-	lcd.clear();
-	systemPrint("Booting ...");
-	delay(7000);
+  Wire.begin(SDA_PIN, SCL_PIN);
+  lcd.begin(&Wire);
+  lcd.backlight();
+  lcd.display();
+  lcd.clear();
+  systemPrint("Initializare...");
+  delay(7000);
 
-	// Initializare Sensore Temp./Umid.
-	systemPrint("Init. DHT11");
-	delay(1000);
+  // Initializare Sensore Temp./Umid.
+  systemPrint("Init. DHT11");
+  delay(1000);
 	dht.begin();
 
-	// Initializare Servo
-	systemPrint("Init. Servo");
-	delay(1000);
+  // Initializare Servo
+  systemPrint("Init. Servo");
+  delay(1000);
 	myServo.attach(servoPin);
 	myServo.write(currentServoAngle);
 
 
-	// Initializare Wi-Fi
-	systemPrint("Init. Wi-Fi");
-	delay(1000);
+  // Initializare Wi-Fi
+  systemPrint("Init. Wi-Fi");
+  delay(1000);
 	WiFi.begin(ssid, password);
 }
 
@@ -126,6 +126,7 @@ void loop()
 
 	lcd.home();
 	lcd.printf("T:%2.0fC H:%2.0f%%  S:%3d ", t, h, currentServoAngle);
+
 
 	// Trimitere date și preluare comenzi de pe Server prin HTTP POST JSON
 	HTTPClient http;
@@ -228,6 +229,7 @@ void rotateToAngle(int targetAngle)
     myServo.write(currentServoAngle);
     delay(15);
   }
+  
 }
 
 
@@ -278,5 +280,3 @@ void dataLedFeedback()
 	delay(25);
 	digitalWrite(ledDataYellow, LOW);
 }
-
-

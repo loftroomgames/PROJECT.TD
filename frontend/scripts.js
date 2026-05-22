@@ -270,6 +270,7 @@ async function updateStatus()
       if ($('saveToggle') && $('saveToggle').checked) {
         saveTelemetryToFile(state.temperature, state.humidity);
       }
+
     } else {
       if ($('control-window') && $('control-window').style.display === 'flex') {
         alert('Conexiunea cu ESP32 a fost pierdută!');
@@ -290,7 +291,8 @@ async function updateStatus()
 
 
 // Salveaza telemetria local
-async function saveTelemetryToFile(temperature, humidity) {
+async function saveTelemetryToFile(temperature, humidity)
+{
   try {
     await fetch('/api/log-telemetry', {
       method: 'POST',
@@ -483,7 +485,6 @@ async function isAdmin(username)
 
 
 
-
 window.addEventListener('beforeunload', () => {
   if (currentUser && activeUser === currentUser) {
     navigator.sendBeacon?.('/api/control/release', new Blob([
@@ -491,6 +492,7 @@ window.addEventListener('beforeunload', () => {
     ], { type: 'application/json' }));
   }
 });
+
 
 document.addEventListener('DOMContentLoaded', () => {
   localStorage.removeItem('userUsername');

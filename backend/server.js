@@ -16,6 +16,7 @@ if (!fs.existsSync(LOG_DIR)) {
 // Detecție ESP OFFLINE
 const espCheckTime = 5000; // [ms]
 let espConnected = false;
+let logCounter = 0;
 
 app.use(cors());
 app.use(express.json());
@@ -54,7 +55,7 @@ function loadData()
 {
   if (!fs.existsSync(DATA_FILE)) {
     console.log(`${logColors.green}[SYSTEM]${logColors.reset}: DATA_FILE negăsit. Loading DEFAULT ... ${logColors.reset}`);
-    return { users: [ { username: "Admin", password: "admin123", isAdmin: true } ], espData: { 
+    return { users: [ { username: "Administrator", password: "admin#123", isAdmin: true } ], espData: { 
       name: "ESP32 Wroom",
       servoDelay: 150, 
       texts: [" - ", " - ", " - "]
@@ -64,7 +65,7 @@ function loadData()
   try {
     const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
 
-    if (!data.users){ data.users = [{ username: "Admin", password: "admin123", isAdmin: true }]; }
+    if (!data.users){ data.users = [{ username: "Administrator", password: "admin#123", isAdmin: true }]; }
 
     if (!data.espData) {
       data.espData.name = "ESP32 Wroom";
@@ -75,7 +76,7 @@ function loadData()
     return data;
   } catch (err) {
     console.log(`${logColors.green}[SYSTEM]${logColors.reset}: Eroare citire DATA_FILE. Loading DEFAULT ... ${logColors.reset}`);
-    return { users: [{ username: "Admin", password: "admin123", isAdmin: true }], espData: { 
+    return { users: [{ username: "Administrator", password: "admin#123", isAdmin: true }], espData: { 
       name: "ESP32 Wroom",
       servoDelay: 150, 
       texts: [" - ", " - ", " - "]
@@ -323,39 +324,49 @@ app.post('/api/esp/sync', (req, res) => {
 app.post('/api/log-telemetry', (req, res) => {
   const { temperature, humidity } = req.body;
 
-  // Generare fisier "azi"
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const fileName = `${year}-${month}-${day}.json`;
-  const filePath = path.join(LOG_DIR, fileName);
+  if (logCounter >= 40)  // din 10 in 10 secunde
+  {
+    logCounter = 0;
 
-  let fileData = [];
+    // Generare fisier "azi"
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const fileName = `${year}-${month}-${day}.json`;
+    const filePath = path.join(LOG_DIR, fileName);
 
-  // Dacă fișierul de azi există deja, îi citim conținutul curent
-  if (fs.existsSync(filePath)) {
-    try {
-      fileData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch (err) {
-      fileData = [];
+    let fileData = [];
+
+    // dacă există deja, incarcă in fileData
+    if (fs.existsSync(filePath)) {
+      try {
+        fileData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      } catch (err) {
+        fileData = [];
+      }
     }
+
+    // updatează fișierul log
+    fileData.push({
+      timestamp: now.toLocaleTimeString('ro-RO'),
+      temperature: Number(temperature),
+      humidity: Number(humidity)
+    });
+
+    // salvează
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false, error: 'Nu s-au putut salva datele.' });
+    }
+
+  } else {
+    logCounter += 1; 
+    res.json({ success: true, saved: false });
   }
 
-  // Adaugă noua înregistrare
-  fileData.push({
-    timestamp: now.toLocaleTimeString('ro-RO'),
-    temperature: Number(temperature),
-    humidity: Number(humidity)
-  });
-
-  // Salvare in fisier
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2));
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Nu s-au putut salva datele.' });
-  }
 });
 
 
